@@ -1,0 +1,23 @@
+[package]
+name = "cbody-ebpf"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[[bin]]
+name = "cbody_ebpf"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+debug = true
+strip = "debuginfo"
+
+[dependencies]
+aya-ebpf = { workspace = true }
+aya-log-ebpf = { workspace = true }
+
+[build-dependencies]
+which = { workspace = true }
+
+

@@ -1,0 +1,25 @@
+[workspace]
+resolver = "2"
+members = [
+  "cbody-common",
+  "cbody-ebpf",
+  "cbody-daemon",
+  "cbody-cli",
+]
+default-members = ["cbody-common", "cbody-cli", "cbody-daemon"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+authors = ["Amartya Chowdhury"]
+license = "GPL3"
+
+[workspace.dependencies]
+aya-ebpf = { version = "0.3.0", default-features = false }
+aya-log-ebpf = { version = "0.3.0", default-features = false }
+which = { version = "8.0.6", default-features = false }
+
+[profile.release.package.lsm-nice-ebpf]
+debug = 2
+codegen-units = 1
+strip = false
