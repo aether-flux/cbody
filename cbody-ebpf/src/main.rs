@@ -27,13 +27,6 @@ pub fn bprm_check_security(ctx: LsmContext) -> i32 {
 fn try_bprm_check_security(ctx: LsmContext) -> Result<i32, i32> {
     let bprm_ptr: *const linux_binprm = ctx.arg(0);
 
-    // let filename_ptr = unsafe {
-    //     let bprm = match ctx.read(bprm_ptr) {
-    //         Ok(b) => b,
-    //         Err(_) => return Ok(0),
-    //     };
-    //     bprm.filename
-    // };
     let filename_ptr = unsafe { (*bprm_ptr).filename };
     let mut filename_buf = [0u8; 256];
 

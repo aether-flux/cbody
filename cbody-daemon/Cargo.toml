@@ -10,7 +10,9 @@ aya-log = { workspace = true }
 env_logger = { workspace = true }
 libc = { workspace = true }
 log = { workspace = true }
+serde = { version = "1.0.229", features = ["derive"] }
 tokio = { workspace = true }
+toml = { workspace = true }
 
 [build-dependencies]
 anyhow = { workspace = true }

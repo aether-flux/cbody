@@ -26,7 +26,9 @@ cargo_metadata = { version = "0.23.1", default-features = false }
 env_logger = { version = "0.11.11", default-features = false }
 libc = { version = "0.2.191", default-features = false }
 log = { version = "0.4.35", default-features = false }
+serde = { version = "1.0.229", features = ["derive"] }
 tokio = { version = "1.54.1", features = ["full"] }
+toml = { version = "1.1.8" }
 
 [profile.release.package.cbody-ebpf]
 debug = 2

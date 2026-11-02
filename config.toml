@@ -1,0 +1,29 @@
+[settings]
+default_action = "deny" # Options: "deny", "log_only"
+enable_ring_buffer_telemetry = true
+
+# Always protect root and critical system init from self-lockout
+[exemptions]
+uids = [0] # Bypass root entirely
+
+[default]
+# Fallback rules for any user not explicitly listed below
+allow_exec = [
+    "/usr/bin/ssh",
+    "/usr/bin/curl"
+]
+block_outbound_ports = [4444, 6666, 1337] # Common C2 / reverse shell ports
+
+[profiles.standard-users]
+uids = [1000, 1001]
+allow_exec = [
+    "/usr/bin/cargo",
+    "/usr/bin/nvim",
+    "/usr/bin/git"
+]
+
+[profiles.service-accounts]
+uids = [33, 48] # www-data, apache, etc.
+allow_exec = [
+    "/usr/sbin/nginx"
+]
