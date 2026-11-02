@@ -5,7 +5,7 @@ edition.workspace = true
 publish = false
 
 [[bin]]
-name = "cbody_ebpf"
+name = "cbody-ebpf"
 path = "src/main.rs"
 
 [profile.release]
@@ -19,5 +19,4 @@ aya-log-ebpf = { workspace = true }
 
 [build-dependencies]
 which = { workspace = true }
-
 

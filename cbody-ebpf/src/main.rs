@@ -11,7 +11,7 @@ use aya_log_ebpf::info;
 
 use crate::vmlinux::linux_binprm;
 
-#[lsm(hook = "lsm/bprm_check_security")]
+#[lsm(hook = "bprm_check_security")]
 pub fn bprm_check_security(ctx: LsmContext) -> i32 {
     match try_bprm_check_security(ctx) {
         Ok(_) => 0,
@@ -37,12 +37,14 @@ fn try_bprm_check_security(ctx: LsmContext) -> Result<i32, i32> {
     let filename_ptr = unsafe { (*bprm_ptr).filename };
     let mut filename_buf = [0u8; 256];
 
-    unsafe {
+    let bytes = unsafe {
         bpf_probe_read_kernel_str_bytes(filename_ptr as *const u8, &mut filename_buf)
-            .map_err(|_| -1)?;
-    }
+            .map_err(|_| -1)?
+    };
 
-    info!(&ctx, "Filename executed: {}", filename_buf);
+    let filename = unsafe { core::str::from_utf8_unchecked(bytes) };
+
+    info!(&ctx, "Filename executed: {}", filename);
 
     Ok(0)
 }
