@@ -1,7 +1,5 @@
 mod config;
 
-use std::path::PathBuf;
-
 use aya::{Btf, EbpfLoader, programs::Lsm};
 use aya_log::EbpfLogger;
 use cbody_common::PathKey;
@@ -31,21 +29,22 @@ async fn main() -> anyhow::Result<()> {
     )))?;
 
     // Load the config file
-    let base = PathBuf::from(".");
-    let config_path = base.join("config.toml");
-    let config = load_config(&config_path)?;
+    let config = load_config()?;
 
-    // Load config properties into BPF map (ALLOWED_BINARIES)
-    let mut allowed_map = aya::maps::HashMap::try_from(ebpf.map_mut("ALLOWED_BINARIES").unwrap())?;
+    // Load config properties into BPF map (DENIED_BINARIES)
+    let mut denied_map = aya::maps::HashMap::try_from(ebpf.map_mut("DENIED_BINARIES").unwrap())?;
 
-    for path_str in config.default.allow_exec {
+    for path_str in config.default.deny_exec {
         let mut key_bytes = [0u8; 256];
         let bytes = path_str.as_bytes();
         let len = core::cmp::min(bytes.len(), 256);
         key_bytes[..len].copy_from_slice(&bytes[..len]);
 
-        let key = PathKey { path: key_bytes };
-        allowed_map.insert(&key, &1, 0)?;
+        let key = PathKey {
+            uid: 1000,
+            path: key_bytes,
+        };
+        denied_map.insert(&key, &1, 0)?;
     }
 
     match EbpfLogger::init(&mut ebpf) {

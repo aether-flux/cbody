@@ -16,7 +16,7 @@ strip = "debuginfo"
 [dependencies]
 aya-ebpf = { workspace = true }
 aya-log-ebpf = { workspace = true }
-cbody-common = { path = "../cbody-common", features = ["ebpf"] }
+cbody-common = { path = "../cbody-common", default-features = false, features = ["ebpf"] }
 
 [build-dependencies]
 which = { workspace = true }

@@ -1,4 +1,7 @@
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use serde::Deserialize;
 
@@ -25,7 +28,7 @@ pub struct Exemptions {
 #[derive(Deserialize, Debug)]
 pub struct Ruleset {
     #[serde(default)]
-    pub allow_exec: Vec<String>,
+    pub deny_exec: Vec<String>,
     #[serde(default)]
     pub block_outbound_ports: Vec<u16>,
 }
@@ -34,13 +37,17 @@ pub struct Ruleset {
 pub struct Profile {
     pub uids: Vec<u32>,
     #[serde(default)]
-    pub allow_exec: Vec<String>,
+    pub deny_exec: Vec<String>,
     #[serde(default)]
     pub block_outbound_ports: Vec<u16>,
 }
 
-pub fn load_config<P: AsRef<Path>>(path: P) -> anyhow::Result<Config> {
+pub fn load_config() -> anyhow::Result<Config> {
+    let base = PathBuf::from(".");
+    let path = base.join("config.toml");
+
     let contents = std::fs::read_to_string(path)?;
     let config: Config = toml::from_str(&contents)?;
+
     Ok(config)
 }

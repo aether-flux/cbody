@@ -8,7 +8,7 @@ uids = [0] # Bypass root entirely
 
 [default]
 # Fallback rules for any user not explicitly listed below
-allow_exec = [
+deny_exec = [
     "/usr/bin/ssh",
     "/usr/bin/curl"
 ]
@@ -16,7 +16,7 @@ block_outbound_ports = [4444, 6666, 1337] # Common C2 / reverse shell ports
 
 [profiles.standard-users]
 uids = [1000, 1001]
-allow_exec = [
+deny_exec = [
     "/usr/bin/cargo",
     "/usr/bin/nvim",
     "/usr/bin/git"
@@ -24,6 +24,6 @@ allow_exec = [
 
 [profiles.service-accounts]
 uids = [33, 48] # www-data, apache, etc.
-allow_exec = [
+deny_exec = [
     "/usr/sbin/nginx"
 ]

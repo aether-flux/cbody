@@ -4,7 +4,9 @@ version.workspace = true
 edition.workspace = true
 
 [features]
+default = ["std"]
+std = ["dep:aya"]
 ebpf = []
 
 [dependencies]
-aya = { workspace = true, optional = true }
+aya = { workspace = true, optional = true, default-features = false }
