@@ -2,3 +2,9 @@
 name = "cbody-common"
 version.workspace = true
 edition.workspace = true
+
+[features]
+ebpf = []
+
+[dependencies]
+aya = { workspace = true, optional = true }

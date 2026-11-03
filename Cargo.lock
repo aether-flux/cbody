@@ -267,6 +267,9 @@ dependencies = [
 [[package]]
 name = "cbody-common"
 version = "0.1.0"
+dependencies = [
+ "aya",
+]
 
 [[package]]
 name = "cbody-daemon"
@@ -277,6 +280,7 @@ dependencies = [
  "aya-build",
  "aya-log",
  "cargo_metadata",
+ "cbody-common",
  "cbody-ebpf",
  "env_logger",
  "libc",
@@ -292,6 +296,7 @@ version = "0.1.0"
 dependencies = [
  "aya-ebpf",
  "aya-log-ebpf",
+ "cbody-common",
  "which",
 ]
 
