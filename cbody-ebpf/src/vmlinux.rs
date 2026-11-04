@@ -22214,6 +22214,15 @@ pub struct compat_robust_list_head {
 pub struct in_addr {
     pub s_addr: __be32,
 }
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct sockaddr_in6 {
+    pub sin6_family: ::aya_ebpf::cty::c_ushort,
+    pub sin6_port: __be16,
+    pub sin6_flowinfo: __be32,
+    pub sin6_addr: in6_addr,
+    pub sin6_scope_id: __u32,
+}
 pub type cond_update_fn_t = ::core::option::Option<
     unsafe extern "C" fn(arg1: *mut trace_array, arg2: *mut ::aya_ebpf::cty::c_void) -> bool_,
 >;
@@ -44522,6 +44531,14 @@ pub struct mountpoint {
 #[derive(Debug, Copy, Clone)]
 pub struct mptcp_mib {
     pub mibs: [::aya_ebpf::cty::c_ulong; 77usize],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct sockaddr_in {
+    pub sin_family: __kernel_sa_family_t,
+    pub sin_port: __be16,
+    pub sin_addr: in_addr,
+    pub __pad: [::aya_ebpf::cty::c_uchar; 8usize],
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
