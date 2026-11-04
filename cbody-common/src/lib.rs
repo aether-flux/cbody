@@ -8,6 +8,12 @@ pub struct PathKey {
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
+pub struct PortKey {
+    pub port: u16,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
 pub struct UidList {
     pub uids: [u32; 16],
     pub count: u32,
@@ -15,6 +21,9 @@ pub struct UidList {
 
 #[cfg(feature = "std")]
 unsafe impl aya::Pod for PathKey {}
+
+#[cfg(feature = "std")]
+unsafe impl aya::Pod for PortKey {}
 
 #[cfg(feature = "std")]
 unsafe impl aya::Pod for UidList {}

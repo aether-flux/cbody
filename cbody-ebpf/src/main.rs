@@ -13,37 +13,21 @@ use aya_ebpf::macros::{lsm, map};
 use aya_ebpf::maps::{HashMap, PerCpuArray, RingBuf};
 use aya_ebpf::programs::LsmContext;
 use aya_log_ebpf::info;
-use cbody_common::{PathKey, UidList};
+use cbody_common::{PathKey, PortKey, UidList};
 
 use crate::vmlinux::{linux_binprm, sock, sockaddr, sockaddr_in, socket};
 
-// const AF_UNIX: u16 = 1;
-// const AF_INET: u16 = 2;
-// const AF_INET6: u16 = 10;
-//
-// #[repr(C)]
-// pub struct ConnectEvent {
-//     pub pid: u32,
-//     pub tgid: u32,
-//     pub uid: u32,
-//     pub family: u16,
-//     pub sock_type: u16,
-//     pub protocol: u16,
-//     pub dport: u16,
-//     pub sport: u16,
-//     pub daddr: [u8; 16],
-//     pub saddr: [u8; 16],
-//     pub comm: [u8; 16],
-// }
+const AF_INET: u16 = 2;
+const AF_INET6: u16 = 10;
 
 #[map]
 pub static SCRATCH_MAP: PerCpuArray<PathKey> = PerCpuArray::with_max_entries(1, 0);
 
-// #[map]
-// pub static EVENTS: RingBuf = RingBuf::with_byte_size(256 * 1024, 0);
-
 #[map]
 pub static DENIED_BINARIES: HashMap<PathKey, UidList> = HashMap::with_max_entries(1024, 0);
+
+#[map]
+pub static DENIED_PORTS: HashMap<PortKey, UidList> = HashMap::with_max_entries(1024, 0);
 
 #[lsm(hook = "bprm_check_security")]
 pub fn bprm_check_security(ctx: LsmContext) -> i32 {
@@ -58,18 +42,18 @@ pub fn bprm_check_security(ctx: LsmContext) -> i32 {
     }
 }
 
-// #[lsm(hook = "socket_connect")]
-// pub fn socket_connect(ctx: LsmContext) -> i32 {
-//     match try_socket_connect(ctx) {
-//         Ok(_) => 0,
-//         Err(mut e) => {
-//             if e > 0 || e < -4095 {
-//                 e = -1;
-//             }
-//             e
-//         }
-//     }
-// }
+#[lsm(hook = "socket_connect")]
+pub fn socket_connect(ctx: LsmContext) -> i32 {
+    match try_socket_connect(ctx) {
+        Ok(_) => 0,
+        Err(mut e) => {
+            if e > 0 || e < -4095 {
+                e = -1;
+            }
+            e
+        }
+    }
+}
 
 fn try_bprm_check_security(ctx: LsmContext) -> Result<i32, i32> {
     let bprm_ptr: *const linux_binprm = ctx.arg(0);
@@ -94,7 +78,7 @@ fn try_bprm_check_security(ctx: LsmContext) -> Result<i32, i32> {
             return Err(-1);
         }
 
-        let cur_uid = (unsafe { bpf_get_current_uid_gid() } & 0xFFFFFFFF) as u32;
+        let cur_uid = (bpf_get_current_uid_gid() & 0xFFFFFFFF) as u32;
 
         let count = uid_list.count as usize;
         for i in 0..16 {
@@ -112,72 +96,59 @@ fn try_bprm_check_security(ctx: LsmContext) -> Result<i32, i32> {
     Ok(0)
 }
 
-// fn try_socket_connect(ctx: LsmContext) -> Result<i32, i32> {
-//     let sock: *const socket = ctx.arg(0);
-//     let address: *const sockaddr = ctx.arg(1);
-//     let addrlen: c_int = ctx.arg(2);
-//     let prev_ret: c_int = ctx.arg(3);
-//
-//     if prev_ret != 0 {
-//         return Ok(prev_ret);
-//     }
-//
-//     if address.is_null() || sock.is_null() {
-//         return Ok(0);
-//     }
-//
-//     let family =
-//         unsafe { bpf_probe_read_kernel(&(*address).sa_family as *const u16).map_err(|_| 0)? };
-//
-//     let mut ev = match EVENTS.reserve::<ConnectEvent>(0) {
-//         Some(e) => e,
-//         None => return Ok(0),
-//     };
-//     let e = ev.as_mut_ptr();
-//     unsafe {
-//         core::ptr::write_bytes(e, 0, 1);
-//         (*e).family = family;
-//     }
-//
-//     match family {
-//         AF_INET => {
-//             if (addrlen as usize) < core::mem::size_of::<sockaddr_in>() {
-//                 ev.discard(0);
-//                 return Ok(0);
-//             }
-//             unsafe {
-//                 let a: sockaddr_in =
-//                     bpf_probe_read_kernel(address as *const sockaddr_in).map_err(|_| 0)?;
-//                 (*e).dport = u16::from_be(a.sin_port);
-//                 (*e).daddr[..4].copy_from_slice(&a.sin_addr.s_addr.to_ne_bytes());
-//             }
-//         }
-//         _ => {
-//             ev.discard(0);
-//             return Ok(0);
-//         }
-//     }
-//
-//     unsafe {
-//         (*e).sock_type = bpf_probe_read_kernel::<i16>(&(*sock).type_).unwrap_or(0) as u16;
-//         let sk: *const sock =
-//             bpf_probe_read_kernel::<*mut sock>(&(*sock).sk).unwrap_or(core::ptr::null_mut());
-//         if !sk.is_null() {
-//             (*e).protocol = bpf_probe_read_kernel::<u16>(&(*sk).sk_protocol).unwrap_or(0) as u16;
-//         }
-//     }
-//
-//     unsafe {
-//         let pt = bpf_get_current_pid_tgid();
-//         (*e).pid = pt as u32;
-//         (*e).tgid = (pt >> 32) as u32;
-//         (*e).uid = bpf_get_current_uid_gid() as u32;
-//         (*e).comm = bpf_get_current_comm().unwrap_or([0; 16]);
-//     }
-//
-//     ev.submit(0);
-//     Ok(0)
-// }
+fn try_socket_connect(ctx: LsmContext) -> Result<i32, i32> {
+    let sock: *const socket = ctx.arg(0);
+    let address: *const sockaddr = ctx.arg(1);
+    let addrlen: c_int = ctx.arg(2);
+
+    if address.is_null() || sock.is_null() {
+        return Ok(0);
+    }
+
+    let family =
+        unsafe { bpf_probe_read_kernel(&(*address).sa_family as *const u16).map_err(|_| 0)? };
+
+    if family != AF_INET && family != AF_INET6 {
+        return Ok(0);
+    }
+
+    if (addrlen as usize) < core::mem::size_of::<sockaddr_in>() {
+        return Ok(0);
+    }
+
+    let mut dport = 0u16;
+    let mut daddr = [0u8; 16];
+    unsafe {
+        let a: sockaddr_in = bpf_probe_read_kernel(address as *const sockaddr_in).map_err(|_| 0)?;
+        dport = u16::from_be(a.sin_port);
+        daddr[..4].copy_from_slice(&a.sin_addr.s_addr.to_ne_bytes());
+    }
+
+    let key = PortKey { port: dport };
+
+    if let Some(uid_list) = unsafe { DENIED_PORTS.get(&key) } {
+        if uid_list.count == 0 {
+            info!(&ctx, "Family: {}, Port: {}", family, dport);
+            return Err(-1);
+        }
+
+        let cur_uid = (bpf_get_current_uid_gid() & 0xFFFFFFFF) as u32;
+        let count = uid_list.count as usize;
+
+        for i in 0..16 {
+            if i >= count {
+                break;
+            }
+
+            if uid_list.uids[i] == cur_uid {
+                info!(&ctx, "Family: {}, Port: {}", family, dport);
+                return Err(-1);
+            }
+        }
+    }
+
+    Ok(0)
+}
 
 #[cfg(not(test))]
 #[panic_handler]

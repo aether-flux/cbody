@@ -1,13 +1,17 @@
 mod config;
+mod loader;
 
 use anyhow::Context;
 use aya::{Btf, EbpfLoader, programs::Lsm};
 use aya_log::EbpfLogger;
-use cbody_common::{PathKey, UidList};
+use cbody_common::{PathKey, PortKey, UidList};
 use log::{debug, warn};
 use tokio::signal;
 
-use crate::config::load_config;
+use crate::{
+    config::load_config,
+    loader::{sync_denied_binaries, sync_denied_ports},
+};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -32,65 +36,9 @@ async fn main() -> anyhow::Result<()> {
     // Load the config file
     let config = load_config()?;
 
-    // Load config properties into BPF map (DENIED_BINARIES)
-    let mut denied_map = aya::maps::HashMap::try_from(ebpf.map_mut("DENIED_BINARIES").unwrap())?;
-
-    // Default rules in config
-    for path_str in config.default.deny_exec {
-        let mut key_bytes = [0u8; 256];
-        let bytes = path_str.as_bytes();
-        let len = core::cmp::min(bytes.len(), 256);
-        key_bytes[..len].copy_from_slice(&bytes[..len]);
-
-        let key = PathKey { path: key_bytes };
-        let value = UidList {
-            uids: [0u32; 16],
-            count: 0,
-        };
-        denied_map.insert(&key, &value, 0)?;
-    }
-
-    // Profile-level rules in config
-    for (p_name, profile) in config.profiles {
-        // let uids = profile.uids;
-
-        for path_str in &profile.deny_exec {
-            let mut key_bytes = [0u8; 256];
-            let bytes = path_str.as_bytes();
-            let len = core::cmp::min(bytes.len(), 256);
-            key_bytes[..len].copy_from_slice(&bytes[..len]);
-
-            let key = PathKey { path: key_bytes };
-
-            let mut uid_list = match denied_map.get(&key, 0) {
-                Ok(existing_val) => existing_val,
-                Err(_) => UidList {
-                    uids: [0; 16],
-                    count: 0,
-                },
-            };
-
-            for &uid in &profile.uids {
-                let cur_count = uid_list.count as usize;
-                if cur_count < 16 {
-                    let mut exists = false;
-                    for i in 0..cur_count {
-                        if uid_list.uids[i] == uid {
-                            exists = true;
-                            break;
-                        }
-                    }
-
-                    if !exists {
-                        uid_list.uids[cur_count] = uid;
-                        uid_list.count += 1;
-                    }
-                }
-            }
-
-            denied_map.insert(&key, &uid_list, 0)?;
-        }
-    }
+    // Load config rules into eBPF maps
+    sync_denied_binaries(&mut ebpf, &config)?;
+    sync_denied_ports(&mut ebpf, &config)?;
 
     match EbpfLogger::init(&mut ebpf) {
         Err(e) => warn!("failed to initialize eBPF logger: {e}"),
@@ -112,12 +60,19 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let btf = Btf::from_sys_fs()?;
-    let program: &mut Lsm = ebpf
+
+    // Attach bprm_check_security program
+    let bprm_check_security: &mut Lsm = ebpf
         .program_mut("bprm_check_security")
         .unwrap()
         .try_into()?;
-    program.load("bprm_check_security", &btf)?;
-    program.attach()?;
+    bprm_check_security.load("bprm_check_security", &btf)?;
+    bprm_check_security.attach()?;
+
+    // Attach socket_connect program
+    let socket_connect: &mut Lsm = ebpf.program_mut("socket_connect").unwrap().try_into()?;
+    socket_connect.load("socket_connect", &btf)?;
+    socket_connect.attach()?;
 
     let ctrl_c = signal::ctrl_c();
     println!("Waiting for CTRL-C...");
