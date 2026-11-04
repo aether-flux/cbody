@@ -15,7 +15,7 @@ use aya_ebpf::programs::LsmContext;
 use aya_log_ebpf::info;
 use cbody_common::{PathKey, PortKey, UidList};
 
-use crate::vmlinux::{linux_binprm, sock, sockaddr, sockaddr_in, socket};
+use crate::vmlinux::{file, linux_binprm, sock, sockaddr, sockaddr_in, socket};
 
 const AF_INET: u16 = 2;
 const AF_INET6: u16 = 10;
@@ -29,22 +29,35 @@ pub static DENIED_BINARIES: HashMap<PathKey, UidList> = HashMap::with_max_entrie
 #[map]
 pub static DENIED_PORTS: HashMap<PortKey, UidList> = HashMap::with_max_entries(1024, 0);
 
-#[lsm(hook = "bprm_check_security")]
-pub fn bprm_check_security(ctx: LsmContext) -> i32 {
-    match try_bprm_check_security(ctx) {
-        Ok(_) => 0,
-        Err(mut e) => {
-            if e > 0 || e < -4095 {
-                e = -1;
-            }
-            e
-        }
-    }
-}
+// #[lsm(hook = "bprm_check_security")]
+// pub fn bprm_check_security(ctx: LsmContext) -> i32 {
+//     match try_bprm_check_security(ctx) {
+//         Ok(_) => 0,
+//         Err(mut e) => {
+//             if e > 0 || e < -4095 {
+//                 e = -1;
+//             }
+//             e
+//         }
+//     }
+// }
+//
+// #[lsm(hook = "socket_connect")]
+// pub fn socket_connect(ctx: LsmContext) -> i32 {
+//     match try_socket_connect(ctx) {
+//         Ok(_) => 0,
+//         Err(mut e) => {
+//             if e > 0 || e < -4095 {
+//                 e = -1;
+//             }
+//             e
+//         }
+//     }
+// }
 
-#[lsm(hook = "socket_connect")]
-pub fn socket_connect(ctx: LsmContext) -> i32 {
-    match try_socket_connect(ctx) {
+#[lsm(hook = "file_open")]
+pub fn file_open(ctx: LsmContext) -> i32 {
+    match try_file_open(ctx) {
         Ok(_) => 0,
         Err(mut e) => {
             if e > 0 || e < -4095 {
@@ -146,6 +159,19 @@ fn try_socket_connect(ctx: LsmContext) -> Result<i32, i32> {
             }
         }
     }
+
+    Ok(0)
+}
+
+fn try_file_open(ctx: LsmContext) -> Result<i32, i32> {
+    let file: *const file = ctx.arg(0);
+
+    if file.is_null() {
+        return Ok(0);
+    }
+
+    // Search /usr/include/asm-generic/fcntl.h for all flag values
+    // if &(*file).f_flags ==
 
     Ok(0)
 }
