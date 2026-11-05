@@ -12,7 +12,7 @@ deny_exec = [
     "/usr/bin/ssh",
     "/usr/bin/curl"
 ]
-noaccess = [
+readonly = [
     "/home/aether/cbody_test.txt",
 ]
 block_outbound_ports = [4444, 6666, 1337] # Common C2 / reverse shell ports

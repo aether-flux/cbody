@@ -10,7 +10,7 @@ use tokio::signal;
 
 use crate::{
     config::load_config,
-    loader::{sync_denied_binaries, sync_denied_ports},
+    loader::{sync_denied_binaries, sync_denied_files, sync_denied_ports},
 };
 
 #[tokio::main]
@@ -39,6 +39,7 @@ async fn main() -> anyhow::Result<()> {
     // Load config rules into eBPF maps
     sync_denied_binaries(&mut ebpf, &config)?;
     sync_denied_ports(&mut ebpf, &config)?;
+    sync_denied_files(&mut ebpf, &config)?;
 
     match EbpfLogger::init(&mut ebpf) {
         Err(e) => warn!("failed to initialize eBPF logger: {e}"),
