@@ -2,6 +2,8 @@
 
 It's not as dramatic as I made the heading sound. The config file of `cbody` is fairly straightforward.
 
+> The config file resides at `/etc/cbody/config.toml`.
+
 ### Sample Config
 
 If you just want a sample config file to get started without any hassles, use this (read the comments for editing fields as needed):
