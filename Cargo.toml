@@ -4,15 +4,21 @@ members = [
   "cbody-common",
   "cbody-ebpf",
   "cbody-daemon",
-  "cbody-cli",
+  # "cbody-cli",
 ]
-default-members = ["cbody-common", "cbody-cli", "cbody-daemon"]
+default-members = ["cbody-common", "cbody-daemon"]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
 authors = ["Amartya Chowdhury"]
+description = "A multi-profile LSM security module policy enforcer daemon in Rust and eBPF."
 license = "GPL3"
+readme = "README.md"
+homepage = "https://github.com/aether-flux/cbody"
+repository = "https://github.com/aether-flux/cbody"
+keywords = ["bpf", "ebpf", "lsm", "security", "linux"]
+categories = ["os::linux-apis", "development-tools::debugging", "embedded"]
 
 [workspace.dependencies]
 aya-ebpf = { version = "0.3.0", default-features = false }
