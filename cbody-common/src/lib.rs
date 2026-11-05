@@ -19,6 +19,23 @@ pub struct UidList {
     pub count: u32,
 }
 
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct UidPermission {
+    pub uid: u32,
+    pub permission: u8, // 1 = readonly, 2 = noaccess, _ => invalid
+    pub _pad: [u8; 3],  // safety for Pod
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct FilePolicyList {
+    pub permissions: [UidPermission; 16],
+    pub count: u32,
+    pub default_permission: u8,
+    pub _pad: [u8; 3],
+}
+
 #[cfg(feature = "std")]
 unsafe impl aya::Pod for PathKey {}
 
@@ -27,3 +44,9 @@ unsafe impl aya::Pod for PortKey {}
 
 #[cfg(feature = "std")]
 unsafe impl aya::Pod for UidList {}
+
+#[cfg(feature = "std")]
+unsafe impl aya::Pod for UidPermission {}
+
+#[cfg(feature = "std")]
+unsafe impl aya::Pod for FilePolicyList {}

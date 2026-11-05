@@ -62,17 +62,22 @@ async fn main() -> anyhow::Result<()> {
     let btf = Btf::from_sys_fs()?;
 
     // Attach bprm_check_security program
-    let bprm_check_security: &mut Lsm = ebpf
-        .program_mut("bprm_check_security")
-        .unwrap()
-        .try_into()?;
-    bprm_check_security.load("bprm_check_security", &btf)?;
-    bprm_check_security.attach()?;
+    // let bprm_check_security: &mut Lsm = ebpf
+    //     .program_mut("bprm_check_security")
+    //     .unwrap()
+    //     .try_into()?;
+    // bprm_check_security.load("bprm_check_security", &btf)?;
+    // bprm_check_security.attach()?;
 
     // Attach socket_connect program
-    let socket_connect: &mut Lsm = ebpf.program_mut("socket_connect").unwrap().try_into()?;
-    socket_connect.load("socket_connect", &btf)?;
-    socket_connect.attach()?;
+    // let socket_connect: &mut Lsm = ebpf.program_mut("socket_connect").unwrap().try_into()?;
+    // socket_connect.load("socket_connect", &btf)?;
+    // socket_connect.attach()?;
+
+    // Attach file_open program
+    let file_open: &mut Lsm = ebpf.program_mut("file_open").unwrap().try_into()?;
+    file_open.load("file_open", &btf)?;
+    file_open.attach()?;
 
     let ctrl_c = signal::ctrl_c();
     println!("Waiting for CTRL-C...");

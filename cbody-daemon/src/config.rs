@@ -31,6 +31,10 @@ pub struct Ruleset {
     pub deny_exec: Vec<String>,
     #[serde(default)]
     pub block_outbound_ports: Vec<u16>,
+    #[serde(default)]
+    pub readonly: Vec<String>,
+    #[serde(default)]
+    pub noaccess: Vec<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -40,6 +44,10 @@ pub struct Profile {
     pub deny_exec: Vec<String>,
     #[serde(default)]
     pub block_outbound_ports: Vec<u16>,
+    #[serde(default)]
+    pub readonly: Vec<String>,
+    #[serde(default)]
+    pub noaccess: Vec<String>,
 }
 
 pub fn load_config() -> anyhow::Result<Config> {

@@ -4,27 +4,34 @@
 #[rustfmt::skip]
 mod vmlinux;
 
-use aya_ebpf::cty::c_int;
+use aya_ebpf::cty::{c_int, c_void};
 use aya_ebpf::helpers::{
-    bpf_get_current_comm, bpf_get_current_pid_tgid, bpf_get_current_uid_gid, bpf_probe_read_kernel,
-    bpf_probe_read_kernel_str_bytes,
+    bpf_d_path, bpf_get_current_comm, bpf_get_current_pid_tgid, bpf_get_current_uid_gid,
+    bpf_probe_read_kernel, bpf_probe_read_kernel_str_bytes,
 };
 use aya_ebpf::macros::{lsm, map};
 use aya_ebpf::maps::{HashMap, PerCpuArray, RingBuf};
 use aya_ebpf::programs::LsmContext;
 use aya_log_ebpf::info;
-use cbody_common::{PathKey, PortKey, UidList};
+use cbody_common::{FilePolicyList, PathKey, PortKey, UidList};
 
-use crate::vmlinux::{file, linux_binprm, sock, sockaddr, sockaddr_in, socket};
+use crate::vmlinux::{file, linux_binprm, path, sock, sockaddr, sockaddr_in, socket};
 
 const AF_INET: u16 = 2;
 const AF_INET6: u16 = 10;
+const O_ACCMODE: u32 = 3;
+const O_RDONLY: u32 = 0;
+const O_WRONLY: u32 = (1 << 0);
+const O_RDWR: u32 = (1 << 1);
 
 #[map]
 pub static SCRATCH_MAP: PerCpuArray<PathKey> = PerCpuArray::with_max_entries(1, 0);
 
 #[map]
 pub static DENIED_BINARIES: HashMap<PathKey, UidList> = HashMap::with_max_entries(1024, 0);
+
+#[map]
+pub static DENIED_FILES: HashMap<PathKey, FilePolicyList> = HashMap::with_max_entries(1024, 0);
 
 #[map]
 pub static DENIED_PORTS: HashMap<PortKey, UidList> = HashMap::with_max_entries(1024, 0);
@@ -55,7 +62,7 @@ pub static DENIED_PORTS: HashMap<PortKey, UidList> = HashMap::with_max_entries(1
 //     }
 // }
 
-#[lsm(hook = "file_open")]
+#[lsm(hook = "file_open", sleepable)]
 pub fn file_open(ctx: LsmContext) -> i32 {
     match try_file_open(ctx) {
         Ok(_) => 0,
@@ -170,8 +177,83 @@ fn try_file_open(ctx: LsmContext) -> Result<i32, i32> {
         return Ok(0);
     }
 
-    // Search /usr/include/asm-generic/fcntl.h for all flag values
-    // if &(*file).f_flags ==
+    let flags = unsafe { bpf_probe_read_kernel(&(*file).f_flags).map_err(|_| 0)? };
+
+    let mut acc_mode = O_RDONLY;
+
+    match (flags & O_ACCMODE) {
+        0 => acc_mode = O_RDONLY,
+        1 => acc_mode = O_WRONLY,
+        2 => acc_mode = O_RDWR,
+        _ => return Ok(0),
+    }
+
+    let mut buf = [0u8; 256];
+    let len = unsafe {
+        bpf_d_path(
+            &(*file).__bindgen_anon_1.f_path as *const path as *const aya_ebpf::bindings::path,
+            buf.as_mut_ptr() as *mut _,
+            256,
+        )
+    };
+    if len <= 0 || len > 256 {
+        return Ok(0);
+    }
+
+    let bytes = match buf.get(..(len as usize - 1)) {
+        Some(b) => b,
+        None => return Ok(0),
+    };
+    let filename = unsafe { core::str::from_utf8_unchecked(bytes) };
+
+    let key = match SCRATCH_MAP.get_ptr_mut(0) {
+        Some(ptr) => unsafe { &mut *ptr },
+        None => return Ok(0),
+    };
+
+    key.path = [0; 256];
+
+    unsafe {
+        bpf_probe_read_kernel_str_bytes(bytes as *const _ as *const u8, &mut key.path)
+            .map_err(|_| -1)?;
+    }
+
+    if let Some(policy_list) = unsafe { DENIED_FILES.get(&key) } {
+        let cur_uid = (bpf_get_current_uid_gid() & 0xFFFFFFFF) as u32;
+        let cur_count = policy_list.count as usize;
+        let mut matched = false;
+        let mut enforced_perm = 0;
+
+        for i in 0..16 {
+            if i >= cur_count {
+                break;
+            }
+
+            if policy_list.permissions[i].uid == cur_uid {
+                matched = true;
+                enforced_perm = policy_list.permissions[i].permission;
+                break;
+            }
+        }
+
+        if !matched {
+            enforced_perm = policy_list.default_permission;
+        }
+
+        if enforced_perm == 2 {
+            info!(
+                &ctx,
+                "FILEBLOCK (NOACCESS), access mode: {}, file: {}", acc_mode, filename
+            );
+            return Err(-1);
+        } else if enforced_perm == 1 && acc_mode != O_RDONLY {
+            info!(
+                &ctx,
+                "FILEBLOCK (READONLY), access mode: {}, file: {}", acc_mode, filename
+            );
+            return Err(-1);
+        }
+    }
 
     Ok(0)
 }
