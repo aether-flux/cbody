@@ -1,10 +1,10 @@
 [settings]
-default_action = "deny" # Options: "deny", "log_only"
-enable_ring_buffer_telemetry = true
+action = "deny" # Options: "deny", "log", "deny_and_log"
+# enable_ring_buffer_telemetry = true
 
 # Always protect root and critical system init from self-lockout
-[exemptions]
-uids = [0] # Bypass root entirely
+# [exemptions]
+# uids = [0] # Bypass root entirely
 
 [default]
 # Fallback rules for any user not explicitly listed below

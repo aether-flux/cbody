@@ -1,7 +1,27 @@
 use aya::Ebpf;
-use cbody_common::{FilePolicyList, PathKey, PortKey, UidList, UidPermission};
+use cbody_common::{
+    DENY, FilePolicyList, LOG, NO_DENY, NO_LOG, PathKey, PortKey, UidList, UidPermission,
+};
 
 use crate::config::Config;
+
+pub fn init_default_actions(ebpf: &mut Ebpf, action_str: &str) -> anyhow::Result<()> {
+    let mut default_actions = aya::maps::Array::try_from(ebpf.map_mut("DEFAULT_ACTIONS").unwrap())?;
+
+    let mut deny = DENY;
+    let mut log = LOG;
+
+    let (deny_val, log_val) = match action_str {
+        "deny" => (DENY, NO_LOG),
+        "log" => (NO_DENY, LOG),
+        _ => (DENY, LOG),
+    };
+
+    default_actions.set(0, &deny_val, 0)?;
+    default_actions.set(1, &log_val, 0)?;
+
+    Ok(())
+}
 
 pub fn sync_denied_binaries(ebpf: &mut Ebpf, config: &Config) -> anyhow::Result<()> {
     let mut denied_bins = aya::maps::HashMap::try_from(ebpf.map_mut("DENIED_BINARIES").unwrap())?;

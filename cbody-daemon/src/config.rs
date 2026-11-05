@@ -3,12 +3,13 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use anyhow::Context;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 pub struct Config {
     pub settings: Settings,
-    pub exemptions: Exemptions,
+    // pub exemptions: Exemptions,
     pub default: Ruleset,
     #[serde(default)]
     pub profiles: HashMap<String, Profile>,
@@ -16,8 +17,8 @@ pub struct Config {
 
 #[derive(Deserialize, Debug)]
 pub struct Settings {
-    pub default_action: String,
-    pub enable_ring_buffer_telemetry: bool,
+    pub action: String,
+    // pub enable_ring_buffer_telemetry: bool,
 }
 
 #[derive(Deserialize, Debug)]
@@ -51,10 +52,12 @@ pub struct Profile {
 }
 
 pub fn load_config() -> anyhow::Result<Config> {
-    let base = PathBuf::from(".");
+    // let base = PathBuf::from(".");
+    let base = PathBuf::from("/etc/cbody");
     let path = base.join("config.toml");
 
-    let contents = std::fs::read_to_string(path)?;
+    let contents = std::fs::read_to_string(path)
+        .context("Config file does not exist at /etc/cbody/config.toml")?;
     let config: Config = toml::from_str(&contents)?;
 
     Ok(config)

@@ -1,5 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub const NO_DENY: u32 = 0;
+pub const DENY: u32 = 1;
+pub const NO_LOG: u32 = 0;
+pub const LOG: u32 = 1;
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct PathKey {

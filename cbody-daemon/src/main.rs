@@ -10,7 +10,7 @@ use tokio::signal;
 
 use crate::{
     config::load_config,
-    loader::{sync_denied_binaries, sync_denied_files, sync_denied_ports},
+    loader::{init_default_actions, sync_denied_binaries, sync_denied_files, sync_denied_ports},
 };
 
 #[tokio::main]
@@ -35,6 +35,10 @@ async fn main() -> anyhow::Result<()> {
 
     // Load the config file
     let config = load_config()?;
+
+    // Set the default actions
+    let action_str = &config.settings.action;
+    init_default_actions(&mut ebpf, action_str)?;
 
     // Load config rules into eBPF maps
     sync_denied_binaries(&mut ebpf, &config)?;
@@ -63,17 +67,17 @@ async fn main() -> anyhow::Result<()> {
     let btf = Btf::from_sys_fs()?;
 
     // Attach bprm_check_security program
-    // let bprm_check_security: &mut Lsm = ebpf
-    //     .program_mut("bprm_check_security")
-    //     .unwrap()
-    //     .try_into()?;
-    // bprm_check_security.load("bprm_check_security", &btf)?;
-    // bprm_check_security.attach()?;
+    let bprm_check_security: &mut Lsm = ebpf
+        .program_mut("bprm_check_security")
+        .unwrap()
+        .try_into()?;
+    bprm_check_security.load("bprm_check_security", &btf)?;
+    bprm_check_security.attach()?;
 
     // Attach socket_connect program
-    // let socket_connect: &mut Lsm = ebpf.program_mut("socket_connect").unwrap().try_into()?;
-    // socket_connect.load("socket_connect", &btf)?;
-    // socket_connect.attach()?;
+    let socket_connect: &mut Lsm = ebpf.program_mut("socket_connect").unwrap().try_into()?;
+    socket_connect.load("socket_connect", &btf)?;
+    socket_connect.attach()?;
 
     // Attach file_open program
     let file_open: &mut Lsm = ebpf.program_mut("file_open").unwrap().try_into()?;
