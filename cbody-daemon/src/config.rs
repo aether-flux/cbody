@@ -53,8 +53,14 @@ pub struct Profile {
 }
 
 pub fn load_config() -> anyhow::Result<Config> {
-    let base = PathBuf::from(".");
+    // let base = PathBuf::from(".");
     // let base = PathBuf::from("/etc/cbody");
+
+    let base = if cfg!(debug_assertions) {
+        PathBuf::from(".")
+    } else {
+        PathBuf::from("/etc/cbody")
+    };
     let path = base.join("config.toml");
 
     let contents = std::fs::read_to_string(path)

@@ -14,6 +14,7 @@ serde = { version = "1.0.229", features = ["derive"] }
 tokio = { workspace = true }
 toml = { workspace = true }
 cbody-common = { path = "../cbody-common" }
+notify = { workspace = true }
 
 [build-dependencies]
 anyhow = { workspace = true }

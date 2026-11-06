@@ -1,11 +1,14 @@
 mod config;
 mod loader;
 
+use std::{path::Path, sync::mpsc::channel};
+
 use anyhow::Context;
 use aya::{Btf, EbpfLoader, programs::Lsm};
 use aya_log::EbpfLogger;
 use cbody_common::{PathKey, PortKey, UidList};
 use log::{debug, warn};
+use notify::{Event, RecursiveMode, Watcher};
 use tokio::signal;
 
 use crate::{
@@ -40,8 +43,7 @@ async fn main() -> anyhow::Result<()> {
     let config = load_config()?;
 
     // Set the default actions
-    let action_str = &config.settings.action;
-    init_default_actions(&mut ebpf, action_str)?;
+    init_default_actions(&mut ebpf, &config.settings.action)?;
 
     // Specify exempt UIDs
     exempt_uids(&mut ebpf, &config.exemptions.uids)?;
@@ -90,9 +92,78 @@ async fn main() -> anyhow::Result<()> {
     file_open.load("file_open", &btf)?;
     file_open.attach()?;
 
-    let ctrl_c = signal::ctrl_c();
-    println!("Waiting for CTRL-C...");
-    ctrl_c.await?;
+    // Create channel for live-reloading
+    let (tx, rx) = channel();
+
+    let mut watcher = notify::recommended_watcher(move |res: notify::Result<Event>| match res {
+        Ok(event) => {
+            let is_modification = matches!(
+                event.kind,
+                notify::EventKind::Modify(notify::event::ModifyKind::Data(_))
+            );
+
+            if is_modification | event.kind.is_create() {
+                let is_config_target = event
+                    .paths
+                    .iter()
+                    .any(|path| path.file_name().map_or(false, |name| name == "config.toml"));
+
+                if is_config_target {
+                    let _ = tx.send(event);
+                }
+            }
+        }
+        Err(e) => eprintln!("Watch error: {:?}", e),
+    })?;
+
+    let watch_path = if cfg!(debug_assertions) {
+        "."
+    } else {
+        "/etc/cbody"
+    };
+    watcher.watch(Path::new(watch_path), RecursiveMode::NonRecursive)?;
+    println!("Watching {} for configuration changes...", watch_path);
+
+    // Loop for live-reloading
+    tokio::task::spawn_blocking(move || {
+        let mut last_reload = std::time::Instant::now();
+
+        for _res in rx {
+            if last_reload.elapsed() < std::time::Duration::from_millis(2000) {
+                continue;
+            }
+            last_reload = std::time::Instant::now();
+
+            println!("Config change detected! Reloading daemon...");
+
+            // Load new config and update maps
+            match load_config() {
+                Ok(new_config) => {
+                    if let Err(e) = init_default_actions(&mut ebpf, &new_config.settings.action) {
+                        eprintln!("Failed to update default actions: {:?}", e);
+                    }
+                    if let Err(e) = exempt_uids(&mut ebpf, &new_config.exemptions.uids) {
+                        eprintln!("Failed to update exempt UIDs: {:?}", e);
+                    }
+                    if let Err(e) = sync_denied_binaries(&mut ebpf, &new_config) {
+                        eprintln!("Failed to update denied binaries: {:?}", e);
+                    }
+                    if let Err(e) = sync_denied_ports(&mut ebpf, &new_config) {
+                        eprintln!("Failed to update denied ports: {:?}", e);
+                    }
+                    if let Err(e) = sync_denied_files(&mut ebpf, &new_config) {
+                        eprintln!("Failed to update denied files: {:?}", e);
+                    }
+                }
+                Err(e) => eprintln!("Failed to load config: {:?}", e),
+            }
+        }
+    });
+
+    // let ctrl_c = signal::ctrl_c();
+    // println!("Waiting for CTRL-C...");
+    // ctrl_c.await?;
+    signal::ctrl_c().await?;
     println!("Exiting...");
 
     Ok(())
