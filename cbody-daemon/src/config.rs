@@ -9,7 +9,7 @@ use serde::Deserialize;
 #[derive(Deserialize, Debug)]
 pub struct Config {
     pub settings: Settings,
-    // pub exemptions: Exemptions,
+    pub exemptions: Exemptions,
     pub default: Ruleset,
     #[serde(default)]
     pub profiles: HashMap<String, Profile>,
@@ -23,6 +23,7 @@ pub struct Settings {
 
 #[derive(Deserialize, Debug)]
 pub struct Exemptions {
+    #[serde(default)]
     pub uids: Vec<u32>,
 }
 
@@ -52,8 +53,8 @@ pub struct Profile {
 }
 
 pub fn load_config() -> anyhow::Result<Config> {
-    // let base = PathBuf::from(".");
-    let base = PathBuf::from("/etc/cbody");
+    let base = PathBuf::from(".");
+    // let base = PathBuf::from("/etc/cbody");
     let path = base.join("config.toml");
 
     let contents = std::fs::read_to_string(path)

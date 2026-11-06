@@ -1,10 +1,10 @@
 [settings]
-action = "deny" # Options: "deny", "log", "deny_and_log"
+action = "deny_and_log" # Options: "deny", "log", "deny_and_log"
 # enable_ring_buffer_telemetry = true
 
 # Always protect root and critical system init from self-lockout
-# [exemptions]
-# uids = [0] # Bypass root entirely
+[exemptions]
+uids = [0, 1000] # Bypass root entirely
 
 [default]
 # Fallback rules for any user not explicitly listed below
@@ -17,11 +17,11 @@ readonly = [
 ]
 block_outbound_ports = [4444, 6666, 1337] # Common C2 / reverse shell ports
 
-[profiles.standard-users]
-uids = [1000, 1001]
-deny_exec = [
-    "/usr/bin/pipes.sh",
-]
+# [profiles.standard-users]
+# uids = [1000, 1001]
+# deny_exec = [
+#     "/usr/bin/pipes.sh",
+# ]
 
 [profiles.service-accounts]
 uids = [33, 48] # www-data, apache, etc.

@@ -23,6 +23,16 @@ pub fn init_default_actions(ebpf: &mut Ebpf, action_str: &str) -> anyhow::Result
     Ok(())
 }
 
+pub fn exempt_uids(ebpf: &mut Ebpf, uids: &Vec<u32>) -> anyhow::Result<()> {
+    let mut exempt_uids = aya::maps::HashMap::try_from(ebpf.map_mut("EXEMPT_UIDS").unwrap())?;
+
+    for &uid in uids {
+        exempt_uids.insert(&uid, &1, 0)?;
+    }
+
+    Ok(())
+}
+
 pub fn sync_denied_binaries(ebpf: &mut Ebpf, config: &Config) -> anyhow::Result<()> {
     let mut denied_bins = aya::maps::HashMap::try_from(ebpf.map_mut("DENIED_BINARIES").unwrap())?;
 

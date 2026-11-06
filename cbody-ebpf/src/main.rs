@@ -31,6 +31,9 @@ pub static DEFAULT_ACTIONS: Array<u32> = Array::with_max_entries(2, 0);
 pub static SCRATCH_MAP: PerCpuArray<PathKey> = PerCpuArray::with_max_entries(1, 0);
 
 #[map]
+pub static EXEMPT_UIDS: HashMap<u32, u32> = HashMap::with_max_entries(512, 0);
+
+#[map]
 pub static DENIED_BINARIES: HashMap<PathKey, UidList> = HashMap::with_max_entries(1024, 0);
 
 #[map]
@@ -98,6 +101,12 @@ fn try_bprm_check_security(ctx: LsmContext) -> Result<i32, i32> {
     }
 
     if let Some(uid_list) = unsafe { DENIED_BINARIES.get(&key) } {
+        let cur_uid = (bpf_get_current_uid_gid() & 0xFFFFFFFF) as u32;
+
+        if unsafe { EXEMPT_UIDS.get(&cur_uid) } == Some(&1) {
+            return Ok(0);
+        }
+
         if uid_list.count == 0 {
             if log_flag == LOG {
                 let filename = unsafe { core::str::from_utf8_unchecked(&key.path) };
@@ -110,8 +119,6 @@ fn try_bprm_check_security(ctx: LsmContext) -> Result<i32, i32> {
                 return Ok(0);
             }
         }
-
-        let cur_uid = (bpf_get_current_uid_gid() & 0xFFFFFFFF) as u32;
 
         let count = uid_list.count as usize;
         for i in 0..16 {
@@ -170,6 +177,12 @@ fn try_socket_connect(ctx: LsmContext) -> Result<i32, i32> {
     let key = PortKey { port: dport };
 
     if let Some(uid_list) = unsafe { DENIED_PORTS.get(&key) } {
+        let cur_uid = (bpf_get_current_uid_gid() & 0xFFFFFFFF) as u32;
+
+        if unsafe { EXEMPT_UIDS.get(&cur_uid) } == Some(&1) {
+            return Ok(0);
+        }
+
         if uid_list.count == 0 {
             if log_flag == LOG {
                 info!(&ctx, "Family: {}, Port: {}", family, dport);
@@ -182,7 +195,6 @@ fn try_socket_connect(ctx: LsmContext) -> Result<i32, i32> {
             }
         }
 
-        let cur_uid = (bpf_get_current_uid_gid() & 0xFFFFFFFF) as u32;
         let count = uid_list.count as usize;
 
         for i in 0..16 {
@@ -260,6 +272,11 @@ fn try_file_open(ctx: LsmContext) -> Result<i32, i32> {
 
     if let Some(policy_list) = unsafe { DENIED_FILES.get(&key) } {
         let cur_uid = (bpf_get_current_uid_gid() & 0xFFFFFFFF) as u32;
+
+        if unsafe { EXEMPT_UIDS.get(&cur_uid) } == Some(&1) {
+            return Ok(0);
+        }
+
         let cur_count = policy_list.count as usize;
         let mut matched = false;
         let mut enforced_perm = 0;

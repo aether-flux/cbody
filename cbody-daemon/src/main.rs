@@ -10,7 +10,10 @@ use tokio::signal;
 
 use crate::{
     config::load_config,
-    loader::{init_default_actions, sync_denied_binaries, sync_denied_files, sync_denied_ports},
+    loader::{
+        exempt_uids, init_default_actions, sync_denied_binaries, sync_denied_files,
+        sync_denied_ports,
+    },
 };
 
 #[tokio::main]
@@ -39,6 +42,9 @@ async fn main() -> anyhow::Result<()> {
     // Set the default actions
     let action_str = &config.settings.action;
     init_default_actions(&mut ebpf, action_str)?;
+
+    // Specify exempt UIDs
+    exempt_uids(&mut ebpf, &config.exemptions.uids)?;
 
     // Load config rules into eBPF maps
     sync_denied_binaries(&mut ebpf, &config)?;
