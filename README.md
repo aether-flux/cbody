@@ -28,10 +28,11 @@ Even in v0.1 release, `cbody` provides the following features:
 - Choose whether to `deny` (only deny the restricted actions without logs), `log` (only logs restricted actions but doesn't block them), or [1]`deny_and_log` (deny restricted actions as well as log them).
 - Set default rules that apply for all users (deny executions, readonly/noaccess files, block ports).
 - Create profiles with different names which apply to specific users (UIDs).
+- Exempt specific UIDs from restrictions.
+- Live-reloading daemon when config file is modified.
 
 Upcoming features to be arrived by v1:
 
-- Live-reloading daemon when config file is modified.
 - A CLI to read, control, and manage the daemon without restarting it or manually handling config files.
 - Automatically create systemd service for the daemon.
 - Probably more stuff...
@@ -64,7 +65,8 @@ git clone https://github.com/aether-flux/cbody
 cd cbody
 
 # Run the daemon (removing RUST_LOG=info will remove the logs)
-RUST_LOG=info sudo -E $(which cargo) run --bin cbody-daemon
+RUST_LOG=info sudo -E $(which cargo) build --release --bin cbody-daemon
+sudo ./target/release/cbody-daemon
 ```
 
 ---

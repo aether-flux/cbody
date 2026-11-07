@@ -11,6 +11,10 @@ If you just want a sample config file to get started without any hassles, use th
 # (required) action specifies what cbody will do for a restricted action
 action = "deny" # Options: "deny", "log", "deny_and_log"
 
+# (optional) uids specifies the UIDs exempt from restrictions (including default restrictions)
+[exemptions]
+uids = [0]
+
 # Default rules that apply for every user (UID)
 [default]
 # (optional) deny_exec contains a list of files that are restricted from being executed
@@ -62,6 +66,14 @@ This field determines what `cbody` does when a restricted action takes place. It
 - `deny_and_log`: Denies the restricted action from happening as well as logs the activity to the daemon.
 - **Any other value**: Acts the same as `deny_and_log`.
 
+## `[exemptions]`
+
+### `uids` (Array[unsigned integer], required)
+
+- This field is an array of unsigned integers, where each number is a UID.
+- UIDs specified in this array are exempt from all restrictions defined in this config, including `default`.
+- For example, exempt root (0) from restrictions: `uids = [0]`.
+
 ## `[default]`
 
 ### `deny_exec` (Array[String], optional)
@@ -89,6 +101,12 @@ This field determines what `cbody` does when a restricted action takes place. It
 - For example, common reverse shell ports.
 
 ## `[profiles.profile-name]`
+
+### `uids` (Array[unsigned integer], required)
+
+- This field is an array of unsigned integers, where each number is a UID.
+- UIDs specified in this array are restricted to perform the actions defined in this profile.
+- For example, add default user (1000) to the profile: `uids = [1000]`.
 
 ## `deny_exec` (Array[String], optional)
 
