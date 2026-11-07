@@ -52,15 +52,19 @@ pub struct Profile {
     pub noaccess: Vec<String>,
 }
 
+pub fn get_config_path() -> &'static str {
+    if cfg!(debug_assertions) {
+        "."
+    } else {
+        "/etc/cbody"
+    }
+}
+
 pub fn load_config() -> anyhow::Result<Config> {
     // let base = PathBuf::from(".");
     // let base = PathBuf::from("/etc/cbody");
 
-    let base = if cfg!(debug_assertions) {
-        PathBuf::from(".")
-    } else {
-        PathBuf::from("/etc/cbody")
-    };
+    let base = PathBuf::from(get_config_path());
     let path = base.join("config.toml");
 
     let contents = std::fs::read_to_string(path)

@@ -4,7 +4,7 @@ action = "deny_and_log" # Options: "deny", "log", "deny_and_log"
 
 # Always protect root and critical system init from self-lockout
 [exemptions]
-uids = [1000] # Bypass root entirely
+# uids = [1000] # Bypass root entirely
 
 [default]
 # Fallback rules for any user not explicitly listed below

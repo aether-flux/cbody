@@ -4,6 +4,7 @@
 #[rustfmt::skip]
 mod vmlinux;
 
+use aya_ebpf::EbpfContext;
 use aya_ebpf::cty::{c_int, c_void};
 use aya_ebpf::helpers::{
     bpf_d_path, bpf_get_current_comm, bpf_get_current_pid_tgid, bpf_get_current_uid_gid,
@@ -13,7 +14,10 @@ use aya_ebpf::macros::{lsm, map};
 use aya_ebpf::maps::{Array, HashMap, PerCpuArray, RingBuf};
 use aya_ebpf::programs::LsmContext;
 use aya_log_ebpf::info;
-use cbody_common::{DENY, FilePolicyList, LOG, NO_DENY, NO_LOG, PathKey, PortKey, UidList};
+use cbody_common::{
+    DENY, EV_EXEC, EV_FILE, EV_PORT, Event, FilePolicyList, LOG, NO_DENY, NO_LOG, PathKey, PortKey,
+    UidList,
+};
 
 use crate::vmlinux::{file, linux_binprm, path, sock, sockaddr, sockaddr_in, socket};
 
@@ -41,6 +45,45 @@ pub static DENIED_FILES: HashMap<PathKey, FilePolicyList> = HashMap::with_max_en
 
 #[map]
 pub static DENIED_PORTS: HashMap<PortKey, UidList> = HashMap::with_max_entries(1024, 0);
+
+#[map]
+pub static EVENTS: RingBuf = RingBuf::with_byte_size(256 * 1024, 0);
+
+#[inline(always)]
+fn emit(
+    ctx: &LsmContext,
+    kind: u8,
+    denied: bool,
+    perm: u8,
+    family: u16,
+    port: u16,
+    mode: u32,
+    path: Option<&[u8; 256]>,
+) {
+    let Some(mut entry) = EVENTS.reserve::<Event>(0) else {
+        return;
+    };
+
+    let e = entry.as_mut_ptr();
+
+    unsafe {
+        (*e).kind = kind;
+        (*e).denied = denied as u8;
+        (*e).perm = perm;
+        (*e)._pad = 0;
+        (*e).family = family;
+        (*e).port = port;
+        (*e).pid = ctx.pid();
+        (*e).uid = ctx.uid();
+        (*e).mode = mode;
+        match path {
+            Some(p) => (*e).path = *p,
+            None => (*e).path = [0u8; 256],
+        }
+    }
+
+    entry.submit(0);
+}
 
 #[lsm(hook = "bprm_check_security")]
 pub fn bprm_check_security(ctx: LsmContext) -> i32 {
@@ -107,10 +150,32 @@ fn try_bprm_check_security(ctx: LsmContext) -> Result<i32, i32> {
             return Ok(0);
         }
 
+        let pid = ctx.pid();
+        let uid = ctx.uid();
+        let deny_str = if deny_flag == DENY { "DENY" } else { "ALLOW" };
+
         if uid_list.count == 0 {
             if log_flag == LOG {
                 let filename = unsafe { core::str::from_utf8_unchecked(&key.path) };
-                info!(&ctx, "Filename executed: {}", filename);
+                // info!(&ctx, "Filename executed: {}", filename);
+                // info!(
+                //     &ctx,
+                //     "Binary execution: pid={} uid={} file={} deny/allow={}",
+                //     pid,
+                //     uid,
+                //     filename,
+                //     deny_str
+                // );
+                emit(
+                    &ctx,
+                    EV_EXEC,
+                    deny_flag == DENY,
+                    0,
+                    0,
+                    0,
+                    0,
+                    Some(&key.path),
+                );
             }
 
             if deny_flag == DENY {
@@ -128,7 +193,25 @@ fn try_bprm_check_security(ctx: LsmContext) -> Result<i32, i32> {
             if uid_list.uids[i] == cur_uid {
                 if log_flag == LOG {
                     let filename = unsafe { core::str::from_utf8_unchecked(&key.path) };
-                    info!(&ctx, "Filename executed: {}", filename);
+                    // info!(&ctx, "Filename executed: {}", filename);
+                    // info!(
+                    //     &ctx,
+                    //     "Binary execution: pid={} uid={} file={} deny/allow={}",
+                    //     pid,
+                    //     uid,
+                    //     filename,
+                    //     deny_str
+                    // );
+                    emit(
+                        &ctx,
+                        EV_EXEC,
+                        deny_flag == DENY,
+                        0,
+                        0,
+                        0,
+                        0,
+                        Some(&key.path),
+                    );
                 }
 
                 if deny_flag == DENY {
@@ -174,6 +257,10 @@ fn try_socket_connect(ctx: LsmContext) -> Result<i32, i32> {
         daddr[..4].copy_from_slice(&a.sin_addr.s_addr.to_ne_bytes());
     }
 
+    let pid = ctx.pid();
+    let uid = ctx.uid();
+    let deny_str = if deny_flag == DENY { "DENY" } else { "ALLOW" };
+
     let key = PortKey { port: dport };
 
     if let Some(uid_list) = unsafe { DENIED_PORTS.get(&key) } {
@@ -185,7 +272,17 @@ fn try_socket_connect(ctx: LsmContext) -> Result<i32, i32> {
 
         if uid_list.count == 0 {
             if log_flag == LOG {
-                info!(&ctx, "Family: {}, Port: {}", family, dport);
+                // info!(&ctx, "Family: {}, Port: {}", family, dport);
+                // info!(
+                //     &ctx,
+                //     "Port connection: pid={} uid={} port={} family={} deny/allow={}",
+                //     pid,
+                //     uid,
+                //     dport,
+                //     family,
+                //     deny_str,
+                // );
+                emit(&ctx, EV_PORT, deny_flag == DENY, 0, family, dport, 0, None);
             }
 
             if deny_flag == DENY {
@@ -204,7 +301,17 @@ fn try_socket_connect(ctx: LsmContext) -> Result<i32, i32> {
 
             if uid_list.uids[i] == cur_uid {
                 if log_flag == LOG {
-                    info!(&ctx, "Family: {}, Port: {}", family, dport);
+                    // info!(&ctx, "Family: {}, Port: {}", family, dport);
+                    // info!(
+                    //     &ctx,
+                    //     "Port connection: pid={} uid={} port={} family={} deny/allow={}",
+                    //     pid,
+                    //     uid,
+                    //     dport,
+                    //     family,
+                    //     deny_str,
+                    // );
+                    emit(&ctx, EV_PORT, deny_flag == DENY, 0, family, dport, 0, None);
                 }
 
                 if deny_flag == DENY {
@@ -240,35 +347,48 @@ fn try_file_open(ctx: LsmContext) -> Result<i32, i32> {
         _ => return Ok(0),
     }
 
+    let key = match SCRATCH_MAP.get_ptr_mut(0) {
+        Some(ptr) => unsafe { &mut *ptr },
+        None => return Ok(0),
+    };
+    key.path = [0; 256];
+
     let mut buf = [0u8; 256];
     let len = unsafe {
         bpf_d_path(
             &(*file).__bindgen_anon_1.f_path as *const path as *const aya_ebpf::bindings::path,
-            buf.as_mut_ptr() as *mut _,
+            key.path.as_mut_ptr() as *mut _,
             256,
         )
     };
-    if len <= 0 || len > 256 {
+    if len < 2 || len > 256 {
         return Ok(0);
     }
+    let len = len as usize;
 
-    let bytes = match buf.get(..(len as usize - 1)) {
+    for i in 0..256 {
+        if i >= len {
+            if let Some(b) = key.path.get_mut(i) {
+                *b = 0;
+            }
+        }
+    }
+
+    let n = core::cmp::min(len as usize - 1, 64);
+    let bytes = match key.path.get(..n) {
         Some(b) => b,
         None => return Ok(0),
     };
     let filename = unsafe { core::str::from_utf8_unchecked(bytes) };
 
-    let key = match SCRATCH_MAP.get_ptr_mut(0) {
-        Some(ptr) => unsafe { &mut *ptr },
-        None => return Ok(0),
-    };
+    let pid = ctx.pid();
+    let uid = ctx.uid();
+    let deny_str = if deny_flag == DENY { "DENY" } else { "ALLOW" };
 
-    key.path = [0; 256];
-
-    unsafe {
-        bpf_probe_read_kernel_str_bytes(bytes as *const _ as *const u8, &mut key.path)
-            .map_err(|_| -1)?;
-    }
+    // unsafe {
+    //     bpf_probe_read_kernel_str_bytes(bytes as *const _ as *const u8, &mut key.path)
+    //         .map_err(|_| -1)?;
+    // }
 
     if let Some(policy_list) = unsafe { DENIED_FILES.get(&key) } {
         let cur_uid = (bpf_get_current_uid_gid() & 0xFFFFFFFF) as u32;
@@ -299,9 +419,28 @@ fn try_file_open(ctx: LsmContext) -> Result<i32, i32> {
 
         if enforced_perm == 2 {
             if log_flag == LOG {
-                info!(
+                // info!(
+                //     &ctx,
+                //     "FILEBLOCK (NOACCESS), access mode: {}, file: {}", acc_mode, filename
+                // );
+                // info!(
+                //     &ctx,
+                //     "File access (noaccess): pid={} uid={} file={} mode={} deny/allow={}",
+                //     pid,
+                //     uid,
+                //     filename,
+                //     acc_mode,
+                //     deny_str
+                // );
+                emit(
                     &ctx,
-                    "FILEBLOCK (NOACCESS), access mode: {}, file: {}", acc_mode, filename
+                    EV_FILE,
+                    deny_flag == DENY,
+                    enforced_perm as u8,
+                    0,
+                    0,
+                    acc_mode,
+                    Some(&key.path),
                 );
             }
 
@@ -312,9 +451,28 @@ fn try_file_open(ctx: LsmContext) -> Result<i32, i32> {
             }
         } else if enforced_perm == 1 && acc_mode != O_RDONLY {
             if log_flag == LOG {
-                info!(
+                // info!(
+                //     &ctx,
+                //     "FILEBLOCK (READONLY), access mode: {}, file: {}", acc_mode, filename
+                // );
+                // info!(
+                //     &ctx,
+                //     "File access (noaccess): pid={} uid={} file={} mode={} deny/allow={}",
+                //     pid,
+                //     uid,
+                //     filename,
+                //     acc_mode,
+                //     deny_str
+                // );
+                emit(
                     &ctx,
-                    "FILEBLOCK (READONLY), access mode: {}, file: {}", acc_mode, filename
+                    EV_FILE,
+                    deny_flag == DENY,
+                    enforced_perm as u8,
+                    0,
+                    0,
+                    acc_mode,
+                    Some(&key.path),
                 );
             }
 

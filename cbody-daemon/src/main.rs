@@ -1,22 +1,24 @@
 mod config;
 mod loader;
+mod logger;
 
 use std::{path::Path, sync::mpsc::channel};
 
 use anyhow::Context;
 use aya::{Btf, EbpfLoader, programs::Lsm};
 use aya_log::EbpfLogger;
-use cbody_common::{PathKey, PortKey, UidList};
+use cbody_common::{EV_EXEC, EV_FILE, PathKey, PortKey, UidList};
 use log::{debug, warn};
 use notify::{Event, RecursiveMode, Watcher};
-use tokio::signal;
+use tokio::{io::unix::AsyncFd, signal};
 
 use crate::{
-    config::load_config,
+    config::{get_config_path, load_config},
     loader::{
         exempt_uids, init_default_actions, sync_denied_binaries, sync_denied_files,
         sync_denied_ports,
     },
+    logger::{FileLogger, format_event},
 };
 
 #[tokio::main]
@@ -53,24 +55,56 @@ async fn main() -> anyhow::Result<()> {
     sync_denied_ports(&mut ebpf, &config)?;
     sync_denied_files(&mut ebpf, &config)?;
 
-    match EbpfLogger::init(&mut ebpf) {
-        Err(e) => warn!("failed to initialize eBPF logger: {e}"),
-        Ok(logger) => {
-            let mut logger = unsafe {
-                tokio::io::unix::AsyncFd::register_with_interest(
-                    logger,
-                    tokio::io::Interest::READABLE,
-                )
-            }?;
-            tokio::task::spawn(async move {
-                loop {
-                    let mut guard = logger.readable_mut().await.unwrap();
-                    guard.get_inner_mut().flush();
-                    guard.clear_ready();
+    // Set up logging to a log file
+    let log_path = format!("{}/cbody.log", get_config_path());
+    let file_logger = FileLogger::new(&log_path);
+
+    let log_ring = aya::maps::RingBuf::try_from(ebpf.take_map("EVENTS").unwrap())?;
+    let mut fd =
+        unsafe { AsyncFd::register_with_interest(log_ring, tokio::io::Interest::READABLE)? };
+    // let logger = file_logger.clone();
+
+    tokio::spawn(async move {
+        loop {
+            let mut guard = match fd.readable_mut().await {
+                Ok(g) => g,
+                Err(_) => break,
+            };
+
+            let ring = guard.get_inner_mut();
+            while let Some(item) = ring.next() {
+                if item.len() < core::mem::size_of::<cbody_common::Event>() {
+                    continue;
                 }
-            });
+                let ev = unsafe {
+                    core::ptr::read_unaligned(item.as_ptr() as *const cbody_common::Event)
+                };
+                file_logger.write_line(&format_event(&ev));
+            }
+
+            guard.clear_ready();
         }
-    }
+    });
+
+    // match EbpfLogger::init_with_logger(&mut ebpf, file_logger) {
+    //     Err(e) => warn!("failed to initialize eBPF logger: {e}"),
+    //     Ok(logger) => {
+    //         let mut logger = unsafe {
+    //             tokio::io::unix::AsyncFd::register_with_interest(
+    //                 logger,
+    //                 tokio::io::Interest::READABLE,
+    //             )
+    //         }?;
+    //         tokio::task::spawn(async move {
+    //             loop {
+    //                 let mut guard = logger.readable_mut().await.unwrap();
+    //                 guard.get_inner_mut().flush();
+    //                 guard.clear_ready();
+    //             }
+    //         });
+    //         println!("Logging events to {}", log_path);
+    //     }
+    // }
 
     let btf = Btf::from_sys_fs()?;
 
@@ -116,13 +150,12 @@ async fn main() -> anyhow::Result<()> {
         Err(e) => eprintln!("Watch error: {:?}", e),
     })?;
 
-    let watch_path = if cfg!(debug_assertions) {
-        "."
-    } else {
-        "/etc/cbody"
-    };
+    let watch_path = get_config_path();
     watcher.watch(Path::new(watch_path), RecursiveMode::NonRecursive)?;
-    println!("Watching {} for configuration changes...", watch_path);
+    println!(
+        "Watching {}/config.toml for configuration changes...",
+        watch_path
+    );
 
     // Loop for live-reloading
     tokio::task::spawn_blocking(move || {
@@ -168,14 +201,3 @@ async fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
-
-// fn main() -> anyhow::Result<()> {
-//     let base = PathBuf::from(".");
-//     let config_path = base.join("config.toml");
-//
-//     let config = load_config(config_path)?;
-//
-//     println!("Config:\n{:?}", config);
-//
-//     Ok(())
-// }
