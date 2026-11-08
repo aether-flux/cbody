@@ -81,7 +81,7 @@ unsafe impl aya::Pod for Event {}
 // Config structs //
 ////////////////////
 #[cfg(feature = "std")]
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub struct Config {
     pub settings: Settings,
     pub exemptions: Option<Exemptions>,
@@ -91,26 +91,26 @@ pub struct Config {
 }
 
 #[cfg(feature = "std")]
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub struct Settings {
     pub action: String,
     // pub enable_ring_buffer_telemetry: bool,
 }
 
 #[cfg(feature = "std")]
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub struct Exemptions {
     #[serde(default)]
     pub uids: Vec<u32>,
 }
 
 #[cfg(feature = "std")]
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub struct Ruleset {
     #[serde(default)]
-    pub deny_exec: Vec<String>,
+    pub exec: Vec<String>,
     #[serde(default)]
-    pub block_outbound_ports: Vec<u16>,
+    pub outbound_ports: Vec<u16>,
     #[serde(default)]
     pub readonly: Vec<String>,
     #[serde(default)]
@@ -118,13 +118,13 @@ pub struct Ruleset {
 }
 
 #[cfg(feature = "std")]
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub struct Profile {
     pub uids: Vec<u32>,
     #[serde(default)]
-    pub deny_exec: Vec<String>,
+    pub exec: Vec<String>,
     #[serde(default)]
-    pub block_outbound_ports: Vec<u16>,
+    pub outbound_ports: Vec<u16>,
     #[serde(default)]
     pub readonly: Vec<String>,
     #[serde(default)]

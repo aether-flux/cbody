@@ -35,7 +35,7 @@ pub fn sync_denied_binaries(ebpf: &mut Ebpf, config: &Config) -> anyhow::Result<
     let mut denied_bins = aya::maps::HashMap::try_from(ebpf.map_mut("DENIED_BINARIES").unwrap())?;
 
     // Default rules
-    for path_str in &config.default.deny_exec {
+    for path_str in &config.default.exec {
         let mut key_bytes = [0u8; 256];
         let bytes = path_str.as_bytes();
         let len = core::cmp::min(bytes.len(), 256);
@@ -52,7 +52,7 @@ pub fn sync_denied_binaries(ebpf: &mut Ebpf, config: &Config) -> anyhow::Result<
 
     // Profile-specific rules
     for (p_name, profile) in &config.profiles {
-        for path_str in &profile.deny_exec {
+        for path_str in &profile.exec {
             let mut key_bytes = [0u8; 256];
             let bytes = path_str.as_bytes();
             let len = core::cmp::min(bytes.len(), 256);
@@ -97,7 +97,7 @@ pub fn sync_denied_ports(ebpf: &mut Ebpf, config: &Config) -> anyhow::Result<()>
     let mut denied_ports = aya::maps::HashMap::try_from(ebpf.map_mut("DENIED_PORTS").unwrap())?;
 
     // Default rules
-    for &port in &config.default.block_outbound_ports {
+    for &port in &config.default.outbound_ports {
         let key = PortKey { port };
         let value = UidList {
             uids: [0u32; 16],
@@ -109,7 +109,7 @@ pub fn sync_denied_ports(ebpf: &mut Ebpf, config: &Config) -> anyhow::Result<()>
 
     // Profile-specific rules
     for (p_name, profile) in &config.profiles {
-        for &port in &profile.block_outbound_ports {
+        for &port in &profile.outbound_ports {
             let key = PortKey { port };
 
             let mut uid_list = match denied_ports.get(&key, 0) {

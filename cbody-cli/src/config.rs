@@ -17,3 +17,11 @@ pub fn load_config() -> anyhow::Result<Config> {
 
     Ok(config)
 }
+
+pub fn save_config(config: &Config) -> anyhow::Result<()> {
+    let config_file_path = PathBuf::from(config_path()).join("config.toml");
+    let contents = toml::to_string_pretty(config)?;
+    std::fs::write(config_file_path, &contents)?;
+
+    Ok(())
+}

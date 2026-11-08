@@ -1,30 +1,25 @@
 [settings]
-action = "deny_and_log" # Options: "deny", "log", "deny_and_log"
-# enable_ring_buffer_telemetry = true
+action = "deny_and_log"
 
-# Always protect root and critical system init from self-lockout
 [exemptions]
-# uids = [1000] # Bypass root entirely
+uids = [0, 1, 2]
 
 [default]
-# Fallback rules for any user not explicitly listed below
-deny_exec = [
-    "/usr/bin/ssh",
-    "/usr/bin/curl"
-]
-readonly = [
-    "/home/aether/cbody_test.txt",
-]
-block_outbound_ports = [4444, 6666, 1337] # Common C2 / reverse shell ports
-
-# [profiles.standard-users]
-# uids = [1000, 1001]
-# deny_exec = [
-#     "/usr/bin/pipes.sh",
-# ]
+exec = ["/usr/bin/ssh", "/usr/bin/curl"]
+outbound_ports = [4444, 6666, 1337]
+readonly = ["/home/aether/cbody_test.txt"]
+noaccess = []
 
 [profiles.service-accounts]
-uids = [33, 48] # www-data, apache, etc.
-deny_exec = [
-    "/usr/sbin/nginx"
-]
+uids = [33, 48, 38]
+exec = ["/usr/sbin/nginx"]
+outbound_ports = []
+readonly = []
+noaccess = []
+
+[profiles.standard-users]
+uids = [1000, 1001]
+exec = ["/usr/bin/pipes.sh"]
+outbound_ports = []
+readonly = []
+noaccess = []

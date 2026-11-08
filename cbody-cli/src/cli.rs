@@ -24,5 +24,5 @@ pub enum Commands {
 
     Check,
 
-    Install,
+    Enable_Service,
 }
