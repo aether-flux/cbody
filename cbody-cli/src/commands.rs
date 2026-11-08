@@ -1,4 +1,5 @@
 use std::{
+    ffi::c_int,
     io::Write,
     path::{Path, PathBuf},
 };
@@ -54,7 +55,12 @@ WantedBy=multi-user.target
 pub fn handle_commands(args: &Args) -> anyhow::Result<()> {
     match &args.command {
         Commands::Init => {
-            let config_file = PathBuf::from(config_path()).join("config.toml");
+            let config_dir = PathBuf::from(config_path());
+            if !config_dir.exists() {
+                std::fs::create_dir_all(&config_dir)?;
+            }
+
+            let config_file = config_dir.join("config.toml");
 
             if config_file.exists() {
                 let mut stdin = std::io::stdin();
@@ -346,6 +352,12 @@ pub fn handle_commands(args: &Args) -> anyhow::Result<()> {
             }
         }
         Commands::Enable_Service => {
+            // Check for root
+            if !is_root() {
+                println!("'cbody enable-service' must be run as root.");
+                return Ok(());
+            }
+
             // Validate config directory path
             let config_dir = Path::new(config_path());
             if !config_dir.exists() {
@@ -376,20 +388,22 @@ pub fn handle_commands(args: &Args) -> anyhow::Result<()> {
             }
 
             // Validate daemon binary
-            // let target_bin = Path::new("/usr/bin/cbodyd");
-            // if !target_bin.exists() {
-            //     println!("Install the daemon binary first. Refer to https://github.com/aether-flux/cbody");
-            //     return Ok(());
-            // }
-            // #[cfg(unix)]
-            // {
-            //     use std::os::unix::fs::PermissionsExt;
-            //     std::fs::set_permissions(target_bin, std::fs::Permissions::from_mode(0755))?;
-            // }
+            let target_bin = Path::new("/usr/bin/cbodyd");
+            if !target_bin.exists() {
+                println!(
+                    "Install the daemon binary first. Refer to https://github.com/aether-flux/cbody"
+                );
+                return Ok(());
+            }
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(target_bin, std::fs::Permissions::from_mode(0755))?;
+            }
 
             // Write service file
-            // let service_path = Path::new("/etc/systemd/system/cbodyd.service");
-            let service_path = Path::new("./cbodyd.service");
+            let service_path = Path::new("/etc/systemd/system/cbodyd.service");
+            // let service_path = Path::new("./cbodyd.service");
             std::fs::write(&service_path, SERVICE_FILE)?;
             println!("Created service file at {}\n", service_path.display());
 
@@ -398,45 +412,63 @@ pub fn handle_commands(args: &Args) -> anyhow::Result<()> {
             println!("  sudo systemctl daemon-reload");
             println!("  sudo systemctl enable --now cbodyd\n");
 
-            //     // Optionally run `sudo systemctl daemon-reload`
-            //     let mut stdin = std::io::stdin();
-            //     let mut choice = String::new();
-            //     print!("Run 'sudo systemctl daemon-reload'? (Y/n)");
-            //     std::io::stdout().flush()?;
-            //     stdin.read_line(&mut choice)?;
-            //
-            //     let choice = choice.trim().to_lowercase();
-            //     if choice == "n" || choice == "no" {
-            //         return Ok(());
-            //     }
-            //
-            //     let status = std::process::Command::new("systemctl").arg("daemon-reload").status()?;
-            //
-            //     if status.success() {
-            //         // Optionally run 'sudo systemctl enable --now cbodyd'
-            //         let mut choice = String::new();
-            //         print!("Run 'sudo systemctl enable --now cbodyd'? (Y/n)");
-            //         std::io::stdout().flush()?;
-            //         stdin.read_line(&mut choice)?;
-            //
-            //         let choice = choice.trim().to_lowercase();
-            //         if choice == "n" || choice == "no" {
-            //             return Ok(());
-            //         }
-            //
-            //         let status = std::process::Command::new("systemctl").arg("enable").arg("--now").arg("cbodyd").status()?;
-            //
-            //         if status.success() {
-            //             println!("All commands run successfully!");
-            //             println!("cbodyd should be running now.");
-            //         } else {
-            //             println!("Failed to run 'sudo systemctl enable --now cbodyd'. Please run the commands manually.");
-            //         }
-            //     } else {
-            //         println!("Failed to run 'sudo systemctl daemon-reload'. Please run the commands manually.");
-            //     }
+            // Optionally run `sudo systemctl daemon-reload`
+            let mut stdin = std::io::stdin();
+            let mut choice = String::new();
+            print!("Run 'sudo systemctl daemon-reload'? (Y/n)");
+            std::io::stdout().flush()?;
+            stdin.read_line(&mut choice)?;
+
+            let choice = choice.trim().to_lowercase();
+            if choice == "n" || choice == "no" {
+                return Ok(());
+            }
+
+            let status = std::process::Command::new("systemctl")
+                .arg("daemon-reload")
+                .status()?;
+
+            if status.success() {
+                // Optionally run 'sudo systemctl enable --now cbodyd'
+                let mut choice = String::new();
+                print!("Run 'sudo systemctl enable --now cbodyd'? (Y/n)");
+                std::io::stdout().flush()?;
+                stdin.read_line(&mut choice)?;
+
+                let choice = choice.trim().to_lowercase();
+                if choice == "n" || choice == "no" {
+                    return Ok(());
+                }
+
+                let status = std::process::Command::new("systemctl")
+                    .arg("enable")
+                    .arg("--now")
+                    .arg("cbodyd")
+                    .status()?;
+
+                if status.success() {
+                    println!("All commands run successfully!");
+                    println!("cbodyd should be running now.");
+                } else {
+                    println!(
+                        "Failed to run 'sudo systemctl enable --now cbodyd'. Please run the commands manually."
+                    );
+                }
+            } else {
+                println!(
+                    "Failed to run 'sudo systemctl daemon-reload'. Please run the commands manually."
+                );
+            }
         }
     }
 
     Ok(())
+}
+
+unsafe extern "C" {
+    fn geteuid() -> c_int;
+}
+
+fn is_root() -> bool {
+    unsafe { geteuid() == 0 }
 }

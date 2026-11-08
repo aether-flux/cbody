@@ -28,6 +28,13 @@ impl FileLogger {
     pub fn write_line(&self, line: &str) {
         if let Ok(mut file) = self.file.lock() {
             let _ = writeln!(file, "{line}");
+        } else {
+            let mut file = OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open("/etc/cbody/cbody.log")
+                .expect("Failed to open log file");
+            let _ = writeln!(file, "{line}");
         }
     }
 }

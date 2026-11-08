@@ -2,24 +2,45 @@
 action = "deny_and_log"
 
 [exemptions]
-uids = [0, 1, 2]
+uids = [
+    0,
+    1,
+    2,
+]
 
 [default]
-exec = ["/usr/bin/ssh", "/usr/bin/curl"]
-outbound_ports = [4444, 6666, 1337]
+exec = [
+    "/usr/bin/ssh",
+    "/usr/bin/curl",
+]
+outbound_ports = [
+    4444,
+    6666,
+    1337,
+]
 readonly = ["/home/aether/cbody_test.txt"]
 noaccess = []
 
 [profiles.service-accounts]
-uids = [33, 48, 38]
+uids = [
+    33,
+    48,
+    38,
+]
 exec = ["/usr/sbin/nginx"]
 outbound_ports = []
 readonly = []
 noaccess = []
 
 [profiles.standard-users]
-uids = [1000, 1001]
-exec = ["/usr/bin/pipes.sh"]
+uids = [
+    1000,
+    1001,
+]
+exec = [
+    "/usr/bin/pipes.sh",
+    "/home/aether/.local/bin/fzfx",
+]
 outbound_ports = []
 readonly = []
 noaccess = []
