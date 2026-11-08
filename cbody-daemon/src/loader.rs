@@ -1,9 +1,7 @@
 use aya::Ebpf;
 use cbody_common::{
-    DENY, FilePolicyList, LOG, NO_DENY, NO_LOG, PathKey, PortKey, UidList, UidPermission,
+    Config, DENY, FilePolicyList, LOG, NO_DENY, NO_LOG, PathKey, PortKey, UidList, UidPermission,
 };
-
-use crate::config::Config;
 
 pub fn init_default_actions(ebpf: &mut Ebpf, action_str: &str) -> anyhow::Result<()> {
     let mut default_actions = aya::maps::Array::try_from(ebpf.map_mut("DEFAULT_ACTIONS").unwrap())?;

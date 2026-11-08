@@ -5,8 +5,9 @@ edition.workspace = true
 
 [features]
 default = ["std"]
-std = ["dep:aya"]
+std = ["dep:aya", "dep:serde", "serde/derive"]
 ebpf = []
 
 [dependencies]
 aya = { workspace = true, optional = true, default-features = false }
+serde = { workspace = true, optional = true, features = ["derive"] }

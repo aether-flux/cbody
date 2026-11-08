@@ -4,9 +4,10 @@ members = [
   "cbody-common",
   "cbody-ebpf",
   "cbody-daemon",
-  # "cbody-cli",
+  "cbody-cli",
 ]
-default-members = ["cbody-common", "cbody-daemon"]
+# default-members = ["cbody-common", "cbody-daemon"]
+default-members = ["cbody-common", "cbody-daemon", "cbody-cli"]
 
 [workspace.package]
 version = "0.1.1"
@@ -23,6 +24,7 @@ categories = ["os::linux-apis", "development-tools::debugging", "embedded"]
 [workspace.dependencies]
 aya-ebpf = { version = "0.3.0", default-features = false }
 aya-log-ebpf = { version = "0.3.0", default-features = false }
+clap = { version = "4.6.7", features = ["derive"] }
 which = { version = "8.0.6" }
 anyhow = { version = "1.0.104", default-features = false }
 aya = { version = "0.16.0", default-features = false }

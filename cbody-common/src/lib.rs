@@ -76,3 +76,57 @@ unsafe impl aya::Pod for FilePolicyList {}
 
 #[cfg(feature = "std")]
 unsafe impl aya::Pod for Event {}
+
+////////////////////
+// Config structs //
+////////////////////
+#[cfg(feature = "std")]
+#[derive(serde::Deserialize, Debug)]
+pub struct Config {
+    pub settings: Settings,
+    pub exemptions: Option<Exemptions>,
+    pub default: Ruleset,
+    #[serde(default)]
+    pub profiles: std::collections::HashMap<String, Profile>,
+}
+
+#[cfg(feature = "std")]
+#[derive(serde::Deserialize, Debug)]
+pub struct Settings {
+    pub action: String,
+    // pub enable_ring_buffer_telemetry: bool,
+}
+
+#[cfg(feature = "std")]
+#[derive(serde::Deserialize, Debug)]
+pub struct Exemptions {
+    #[serde(default)]
+    pub uids: Vec<u32>,
+}
+
+#[cfg(feature = "std")]
+#[derive(serde::Deserialize, Debug)]
+pub struct Ruleset {
+    #[serde(default)]
+    pub deny_exec: Vec<String>,
+    #[serde(default)]
+    pub block_outbound_ports: Vec<u16>,
+    #[serde(default)]
+    pub readonly: Vec<String>,
+    #[serde(default)]
+    pub noaccess: Vec<String>,
+}
+
+#[cfg(feature = "std")]
+#[derive(serde::Deserialize, Debug)]
+pub struct Profile {
+    pub uids: Vec<u32>,
+    #[serde(default)]
+    pub deny_exec: Vec<String>,
+    #[serde(default)]
+    pub block_outbound_ports: Vec<u16>,
+    #[serde(default)]
+    pub readonly: Vec<String>,
+    #[serde(default)]
+    pub noaccess: Vec<String>,
+}

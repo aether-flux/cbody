@@ -4,53 +4,8 @@ use std::{
 };
 
 use anyhow::Context;
+use cbody_common::Config;
 use serde::Deserialize;
-
-#[derive(Deserialize, Debug)]
-pub struct Config {
-    pub settings: Settings,
-    pub exemptions: Option<Exemptions>,
-    pub default: Ruleset,
-    #[serde(default)]
-    pub profiles: HashMap<String, Profile>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Settings {
-    pub action: String,
-    // pub enable_ring_buffer_telemetry: bool,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Exemptions {
-    #[serde(default)]
-    pub uids: Vec<u32>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Ruleset {
-    #[serde(default)]
-    pub deny_exec: Vec<String>,
-    #[serde(default)]
-    pub block_outbound_ports: Vec<u16>,
-    #[serde(default)]
-    pub readonly: Vec<String>,
-    #[serde(default)]
-    pub noaccess: Vec<String>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Profile {
-    pub uids: Vec<u32>,
-    #[serde(default)]
-    pub deny_exec: Vec<String>,
-    #[serde(default)]
-    pub block_outbound_ports: Vec<u16>,
-    #[serde(default)]
-    pub readonly: Vec<String>,
-    #[serde(default)]
-    pub noaccess: Vec<String>,
-}
 
 pub fn get_config_path() -> &'static str {
     if cfg!(debug_assertions) {
