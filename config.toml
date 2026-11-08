@@ -3,7 +3,7 @@ action = "deny_and_log" # Options: "deny", "log", "deny_and_log"
 # enable_ring_buffer_telemetry = true
 
 # Always protect root and critical system init from self-lockout
-# [exemptions]
+[exemptions]
 # uids = [1000] # Bypass root entirely
 
 [default]

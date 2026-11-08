@@ -18,6 +18,8 @@ pub enum Commands {
 
     Set { property: String, value: String },
 
+    Add { property: String, value: String },
+
     Get { property: String },
 
     Check,
