@@ -58,10 +58,11 @@ pub fn format_event(ev: &Event) -> String {
         .position(|&b| b == 0)
         .unwrap_or(ev.path.len());
     let path = String::from_utf8_lossy(&ev.path[..end]);
-    let action = if ev.denied == 1 { "DENY" } else { "ALLOW" };
+    let action = if ev.denied == 1 { "DENIED" } else { "ALLOWED" };
+
     match ev.kind {
         EV_EXEC => format!(
-            "[INFO] Binary execution: pid={} uid={} file={} action={}",
+            "[Binary execution] [PID={}] [UID={}] [FILE={}] [ACTION={}]",
             ev.pid, ev.uid, path, action
         ),
         EV_FILE => {
@@ -72,12 +73,12 @@ pub fn format_event(ev: &Event) -> String {
                 _ => "rw",
             };
             format!(
-                "[INFO] File access ({perm}): pid={} uid={} file={} mode={} action={}",
+                "[File access ({perm})] [PID={}] [UID={}] [FILE={}] [MODE={}] [ACTION={}]",
                 ev.pid, ev.uid, path, mode, action
             )
         }
         _ => format!(
-            "[INFO] Port connection: pid={} uid={} port={} family={} action={}",
+            "[Port connection] [PID={}] [UID={}] [PORT={}] [FAMILY={}] [ACTION={}]",
             ev.pid, ev.uid, ev.port, ev.family, action
         ),
     }
