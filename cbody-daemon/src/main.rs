@@ -48,7 +48,9 @@ async fn main() -> anyhow::Result<()> {
     init_default_actions(&mut ebpf, &config.settings.action)?;
 
     // Specify exempt UIDs
-    exempt_uids(&mut ebpf, &config.exemptions.uids)?;
+    if let Some(exemptions) = &config.exemptions {
+        exempt_uids(&mut ebpf, &exemptions.uids)?;
+    }
 
     // Load config rules into eBPF maps
     sync_denied_binaries(&mut ebpf, &config)?;
@@ -175,8 +177,10 @@ async fn main() -> anyhow::Result<()> {
                     if let Err(e) = init_default_actions(&mut ebpf, &new_config.settings.action) {
                         eprintln!("Failed to update default actions: {:?}", e);
                     }
-                    if let Err(e) = exempt_uids(&mut ebpf, &new_config.exemptions.uids) {
-                        eprintln!("Failed to update exempt UIDs: {:?}", e);
+                    if let Some(exemptions) = &new_config.exemptions {
+                        if let Err(e) = exempt_uids(&mut ebpf, &exemptions.uids) {
+                            eprintln!("Failed to update exempt UIDs: {:?}", e);
+                        }
                     }
                     if let Err(e) = sync_denied_binaries(&mut ebpf, &new_config) {
                         eprintln!("Failed to update denied binaries: {:?}", e);

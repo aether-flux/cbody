@@ -9,7 +9,7 @@ use serde::Deserialize;
 #[derive(Deserialize, Debug)]
 pub struct Config {
     pub settings: Settings,
-    pub exemptions: Exemptions,
+    pub exemptions: Option<Exemptions>,
     pub default: Ruleset,
     #[serde(default)]
     pub profiles: HashMap<String, Profile>,

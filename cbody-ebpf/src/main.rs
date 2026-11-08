@@ -158,14 +158,6 @@ fn try_bprm_check_security(ctx: LsmContext) -> Result<i32, i32> {
             if log_flag == LOG {
                 let filename = unsafe { core::str::from_utf8_unchecked(&key.path) };
                 // info!(&ctx, "Filename executed: {}", filename);
-                // info!(
-                //     &ctx,
-                //     "Binary execution: pid={} uid={} file={} deny/allow={}",
-                //     pid,
-                //     uid,
-                //     filename,
-                //     deny_str
-                // );
                 emit(
                     &ctx,
                     EV_EXEC,
@@ -194,14 +186,6 @@ fn try_bprm_check_security(ctx: LsmContext) -> Result<i32, i32> {
                 if log_flag == LOG {
                     let filename = unsafe { core::str::from_utf8_unchecked(&key.path) };
                     // info!(&ctx, "Filename executed: {}", filename);
-                    // info!(
-                    //     &ctx,
-                    //     "Binary execution: pid={} uid={} file={} deny/allow={}",
-                    //     pid,
-                    //     uid,
-                    //     filename,
-                    //     deny_str
-                    // );
                     emit(
                         &ctx,
                         EV_EXEC,
@@ -273,15 +257,6 @@ fn try_socket_connect(ctx: LsmContext) -> Result<i32, i32> {
         if uid_list.count == 0 {
             if log_flag == LOG {
                 // info!(&ctx, "Family: {}, Port: {}", family, dport);
-                // info!(
-                //     &ctx,
-                //     "Port connection: pid={} uid={} port={} family={} deny/allow={}",
-                //     pid,
-                //     uid,
-                //     dport,
-                //     family,
-                //     deny_str,
-                // );
                 emit(&ctx, EV_PORT, deny_flag == DENY, 0, family, dport, 0, None);
             }
 
@@ -302,15 +277,6 @@ fn try_socket_connect(ctx: LsmContext) -> Result<i32, i32> {
             if uid_list.uids[i] == cur_uid {
                 if log_flag == LOG {
                     // info!(&ctx, "Family: {}, Port: {}", family, dport);
-                    // info!(
-                    //     &ctx,
-                    //     "Port connection: pid={} uid={} port={} family={} deny/allow={}",
-                    //     pid,
-                    //     uid,
-                    //     dport,
-                    //     family,
-                    //     deny_str,
-                    // );
                     emit(&ctx, EV_PORT, deny_flag == DENY, 0, family, dport, 0, None);
                 }
 
@@ -385,11 +351,6 @@ fn try_file_open(ctx: LsmContext) -> Result<i32, i32> {
     let uid = ctx.uid();
     let deny_str = if deny_flag == DENY { "DENY" } else { "ALLOW" };
 
-    // unsafe {
-    //     bpf_probe_read_kernel_str_bytes(bytes as *const _ as *const u8, &mut key.path)
-    //         .map_err(|_| -1)?;
-    // }
-
     if let Some(policy_list) = unsafe { DENIED_FILES.get(&key) } {
         let cur_uid = (bpf_get_current_uid_gid() & 0xFFFFFFFF) as u32;
 
@@ -423,15 +384,6 @@ fn try_file_open(ctx: LsmContext) -> Result<i32, i32> {
                 //     &ctx,
                 //     "FILEBLOCK (NOACCESS), access mode: {}, file: {}", acc_mode, filename
                 // );
-                // info!(
-                //     &ctx,
-                //     "File access (noaccess): pid={} uid={} file={} mode={} deny/allow={}",
-                //     pid,
-                //     uid,
-                //     filename,
-                //     acc_mode,
-                //     deny_str
-                // );
                 emit(
                     &ctx,
                     EV_FILE,
@@ -454,15 +406,6 @@ fn try_file_open(ctx: LsmContext) -> Result<i32, i32> {
                 // info!(
                 //     &ctx,
                 //     "FILEBLOCK (READONLY), access mode: {}, file: {}", acc_mode, filename
-                // );
-                // info!(
-                //     &ctx,
-                //     "File access (noaccess): pid={} uid={} file={} mode={} deny/allow={}",
-                //     pid,
-                //     uid,
-                //     filename,
-                //     acc_mode,
-                //     deny_str
                 // );
                 emit(
                     &ctx,
