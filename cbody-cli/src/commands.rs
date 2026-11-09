@@ -55,6 +55,12 @@ WantedBy=multi-user.target
 pub fn handle_commands(args: &Args) -> anyhow::Result<()> {
     match &args.command {
         Commands::Init => {
+            // Check for root
+            if !is_root() {
+                println!("cbody must be run as root.");
+                return Ok(());
+            }
+
             let config_dir = PathBuf::from(config_path());
             if !config_dir.exists() {
                 std::fs::create_dir_all(&config_dir)?;
@@ -154,6 +160,12 @@ pub fn handle_commands(args: &Args) -> anyhow::Result<()> {
             }
         }
         Commands::Set { property, value } => {
+            // Check for root
+            if !is_root() {
+                println!("cbody must be run as root.");
+                return Ok(());
+            }
+
             let mut config = load_config()?;
 
             match property.as_str() {
@@ -274,6 +286,12 @@ pub fn handle_commands(args: &Args) -> anyhow::Result<()> {
             }
         }
         Commands::Add { property, value } => {
+            // Check for root
+            if !is_root() {
+                println!("cbody must be run as root.");
+                return Ok(());
+            }
+
             let mut config = load_config()?;
 
             match property.as_str() {
@@ -378,7 +396,7 @@ pub fn handle_commands(args: &Args) -> anyhow::Result<()> {
         Commands::Enable_Service => {
             // Check for root
             if !is_root() {
-                println!("'cbody enable-service' must be run as root.");
+                println!("cbody must be run as root.");
                 return Ok(());
             }
 

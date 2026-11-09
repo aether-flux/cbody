@@ -10,7 +10,7 @@ members = [
 default-members = ["cbody-common", "cbody-daemon", "cbody-cli"]
 
 [workspace.package]
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 authors = ["Amartya Chowdhury"]
 description = "A multi-profile LSM security module policy enforcer daemon in Rust and eBPF."

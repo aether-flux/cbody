@@ -22,7 +22,7 @@ To view the full list of LSM hooks, refer to [include/linux/lsm_hook_defs.h](htt
 
 # Features
 
-Even in v0.1 release, `cbody` provides the following features:
+In the current release, `cbody` provides the following features:
 
 - A `config.toml` to define default actions and rules, and profile-specific rules.
 - Choose whether to `deny` (only deny the restricted actions without logs), `log` (only logs restricted actions but doesn't block them), or [1]`deny_and_log` (deny restricted actions as well as log them).
@@ -30,11 +30,13 @@ Even in v0.1 release, `cbody` provides the following features:
 - Create profiles with different names which apply to specific users (UIDs).
 - Exempt specific UIDs from restrictions.
 - Live-reloading daemon when config file is modified.
+- A CLI to read, control, and manage the config and daemon without restarting it or manually handling config files.
+- Automatically create systemd service for the daemon.
 
 Upcoming features to be arrived by v1:
 
-- A CLI to read, control, and manage the daemon without restarting it or manually handling config files.
-- Automatically create systemd service for the daemon.
+- Easy installation.
+- CLI command to remove items from config, and view all config properties at once.
 - Probably more stuff...
 
 [1] Any string other than 'deny' and 'log' will have the same effect as 'deny_and_log'. 'deny_and_log' is only a recommended string to understand what the value does. For more information, refer to [CONFIG.md](./CONFIG.md).
@@ -44,6 +46,18 @@ Upcoming features to be arrived by v1:
 # Configuring `cbody`
 
 A full guide for writing a `config.toml`, along with a sample config, is at [CONFIG.md](./CONFIG.md).
+
+---
+
+# Using the CLI
+
+cbody also comes with a CLI to manage the config and the daemon service directly without having to manually go through config files. Some of its features are:
+
+- Create a default config if one doesn't exist.
+- Get and set values in the config file directly.
+- Create and set up the daemon service.
+
+For full details on the CLI, refer to [CLI.md](./CLI.md).
 
 ---
 
