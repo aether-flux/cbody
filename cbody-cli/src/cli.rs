@@ -16,11 +16,13 @@ pub struct Args {
 pub enum Commands {
     Init,
 
+    Get { property: String },
+
     Set { property: String, value: String },
 
     Add { property: String, value: String },
 
-    Get { property: String },
+    Remove { property: String, value: String },
 
     Check,
 

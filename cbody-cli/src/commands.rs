@@ -447,6 +447,152 @@ pub fn handle_commands(args: &Args) -> anyhow::Result<()> {
                 Err(e) => eprintln!("Error when updating config file: {}", e),
             }
         }
+        Commands::Remove { property, value } => {
+            // Check for root
+            if !is_root() {
+                println!("cbody must be run as root.");
+                return Ok(());
+            }
+
+            let mut config = load_config()?;
+
+            match property.as_str() {
+                "settings.action" => {
+                    println!(
+                        "settings.action cannot be removed/empty. Run `sudo cbody get settings.action` to get its value or `set` to set it."
+                    );
+                    return Ok(());
+                }
+
+                "exemptions.uids" => {
+                    let uids: Vec<&str> = value.split(',').collect();
+                    let mut exemptions = config
+                        .exemptions
+                        .get_or_insert(Exemptions { uids: Vec::new() });
+                    uids.iter().for_each(|u| {
+                        let uid: u32 = u.parse().expect("Unable to parse uid");
+                        for i in 0..exemptions.uids.len() {
+                            if exemptions.uids.get(i).unwrap() == &uid {
+                                let _ = exemptions.uids.swap_remove(i);
+                                break;
+                            }
+                        }
+                    });
+                }
+
+                d if d.starts_with("default.") => {
+                    let parts: Vec<&str> = d.split('.').collect();
+                    let field = parts.get(1).context("No field name specified")?;
+
+                    let values: Vec<&str> = value.split(',').collect();
+
+                    match *field {
+                        "exec" => values.iter().for_each(|&v| {
+                            for i in 0..config.default.exec.len() {
+                                if config.default.exec.get(i).unwrap() == v {
+                                    let _ = config.default.exec.swap_remove(i);
+                                    break;
+                                }
+                            }
+                        }),
+                        "outbound_ports" => values.iter().for_each(|&v| {
+                            let p: u16 = v.parse().expect("Unable to parse port number");
+                            for i in 0..config.default.outbound_ports.len() {
+                                if config.default.outbound_ports.get(i).unwrap() == &p {
+                                    let _ = config.default.outbound_ports.swap_remove(i);
+                                    break;
+                                }
+                            }
+                        }),
+                        "readonly" => values.iter().for_each(|&v| {
+                            for i in 0..config.default.readonly.len() {
+                                if config.default.readonly.get(i).unwrap() == v {
+                                    let _ = config.default.readonly.swap_remove(i);
+                                    break;
+                                }
+                            }
+                        }),
+                        "noaccess" => values.iter().for_each(|&v| {
+                            for i in 0..config.default.noaccess.len() {
+                                if config.default.noaccess.get(i).unwrap() == v {
+                                    let _ = config.default.noaccess.swap_remove(i);
+                                    break;
+                                }
+                            }
+                        }),
+                        _ => eprintln!("Unknown field: {}", d),
+                    }
+                }
+
+                p if p.starts_with("profiles.") => {
+                    let parts: Vec<&str> = p.split('.').collect();
+                    let p_name = parts.get(1).context("No profile name specified")?;
+                    let field = parts.get(2).context("No field name specified")?;
+
+                    let values: Vec<&str> = value.split(',').collect();
+
+                    if let Some(profile) = config.profiles.get_mut(*p_name) {
+                        match *field {
+                            "uids" => values.iter().for_each(|&v| {
+                                let u: u32 = v.parse().expect("Unable to parse uid");
+                                for i in 0..profile.uids.len() {
+                                    if profile.uids.get(i).unwrap() == &u {
+                                        let _ = profile.exec.swap_remove(i);
+                                        break;
+                                    }
+                                }
+                            }),
+                            "exec" => values.iter().for_each(|&v| {
+                                for i in 0..profile.exec.len() {
+                                    if profile.exec.get(i).unwrap() == v {
+                                        let _ = profile.exec.swap_remove(i);
+                                        break;
+                                    }
+                                }
+                            }),
+                            "outbound_ports" => values.iter().for_each(|&v| {
+                                let p: u16 = v.parse().expect("Unable to parse port number");
+                                for i in 0..profile.outbound_ports.len() {
+                                    if profile.outbound_ports.get(i).unwrap() == &p {
+                                        let _ = profile.outbound_ports.swap_remove(i);
+                                        break;
+                                    }
+                                }
+                            }),
+                            "readonly" => values.iter().for_each(|&v| {
+                                for i in 0..profile.readonly.len() {
+                                    if profile.readonly.get(i).unwrap() == v {
+                                        let _ = profile.readonly.swap_remove(i);
+                                        break;
+                                    }
+                                }
+                            }),
+                            "noaccess" => values.iter().for_each(|&v| {
+                                for i in 0..profile.noaccess.len() {
+                                    if profile.noaccess.get(i).unwrap() == v {
+                                        let _ = profile.noaccess.swap_remove(i);
+                                        break;
+                                    }
+                                }
+                            }),
+                            _ => eprintln!("Unknown field: {}", p),
+                        }
+                    } else {
+                        eprintln!("Unknown profile name: {}", p_name);
+                    }
+                }
+
+                _ => eprintln!("Unknown config property: {}", property),
+            }
+
+            match save_config(&config) {
+                Ok(_) => println!(
+                    "Config updated successfully! Check out config at {}/config.toml.",
+                    config_path()
+                ),
+                Err(e) => eprintln!("Error when updating config file: {}", e),
+            }
+        }
         Commands::Check => {
             let path = PathBuf::from(config_path()).canonicalize()?;
             match load_config() {
