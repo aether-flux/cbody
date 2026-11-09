@@ -259,7 +259,7 @@ dependencies = [
 
 [[package]]
 name = "cbody-cli"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "cbody-common",
@@ -269,7 +269,7 @@ dependencies = [
 
 [[package]]
 name = "cbody-common"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "aya",
  "serde",
@@ -277,7 +277,7 @@ dependencies = [
 
 [[package]]
 name = "cbody-daemon"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "aya",
@@ -297,7 +297,7 @@ dependencies = [
 
 [[package]]
 name = "cbody-ebpf"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "aya-ebpf",
  "aya-log-ebpf",

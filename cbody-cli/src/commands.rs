@@ -99,6 +99,70 @@ pub fn handle_commands(args: &Args) -> anyhow::Result<()> {
             let config = load_config()?;
 
             match property.as_str() {
+                v if v.is_empty() || v == "_" => {
+                    // settings
+                    println!("[settings]");
+                    println!("action = {}\n", &config.settings.action);
+
+                    // exemptions
+                    if let Some(exemptions) = &config.exemptions {
+                        println!("[exemptions]");
+                        println!("uids = [");
+                        exemptions.uids.iter().for_each(|u| println!("\t{u},"));
+                        println!("]\n");
+                    }
+
+                    // default
+                    println!("[default]");
+                    println!("exec = [");
+                    &config.default.exec.iter().for_each(|e| println!("\t{e},"));
+                    println!("]");
+                    println!("outbound_ports = [");
+                    &config
+                        .default
+                        .outbound_ports
+                        .iter()
+                        .for_each(|p| println!("\t{p},"));
+                    println!("]");
+                    println!("readonly = [");
+                    &config
+                        .default
+                        .readonly
+                        .iter()
+                        .for_each(|r| println!("\t{r},"));
+                    println!("]");
+                    println!("noaccess = [");
+                    &config
+                        .default
+                        .noaccess
+                        .iter()
+                        .for_each(|n| println!("\t{n},"));
+                    println!("]\n");
+
+                    // profiles
+                    for (p_name, profile) in &config.profiles {
+                        println!("[profiles.{p_name}]");
+                        println!("uids = [");
+                        profile.uids.iter().for_each(|u| println!("\t{u},"));
+                        println!("]");
+                        println!("exec = [");
+                        profile.exec.iter().for_each(|e| println!("\t{e},"));
+                        println!("]");
+                        println!("outbound_ports = [");
+                        profile
+                            .outbound_ports
+                            .iter()
+                            .for_each(|p| println!("\t{p},"));
+                        println!("]");
+                        println!("readonly = [");
+                        profile.readonly.iter().for_each(|r| println!("\t{r},"));
+                        println!("]");
+                        println!("noaccess = [");
+                        profile.noaccess.iter().for_each(|n| println!("\t{n},"));
+                        println!("]\n");
+                    }
+                }
+
                 "settings.action" => println!("{}", config.settings.action),
 
                 "exemptions.uids" => {

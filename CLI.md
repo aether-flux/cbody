@@ -47,6 +47,7 @@ sudo cbody enable-service
 - Get the value(s) of properties defined in the config file.
 - Uses dot notation to get the property name.
 - For example, to view all files in the readonly array of profile 'restricted', the notation would be `profile.restricted.readonly`.
+- Passing '_' as the property name would show all the properties in the config file in a readable format.
 
 #### Usage
 
@@ -55,6 +56,9 @@ sudo cbody get exemptions.uids
 
 # Or, run it without sudo, since this command doesn't need any write permissions
 cbody get exemptions.uids
+
+# View all properties of the config file
+cbody get _
 ```
 
 ## Set (`cbody set`)
