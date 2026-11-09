@@ -537,7 +537,7 @@ pub fn handle_commands(args: &Args) -> anyhow::Result<()> {
                                 let u: u32 = v.parse().expect("Unable to parse uid");
                                 for i in 0..profile.uids.len() {
                                     if profile.uids.get(i).unwrap() == &u {
-                                        let _ = profile.exec.swap_remove(i);
+                                        let _ = profile.uids.swap_remove(i);
                                         break;
                                     }
                                 }
