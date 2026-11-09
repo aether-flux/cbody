@@ -157,7 +157,19 @@ pub fn handle_commands(args: &Args) -> anyhow::Result<()> {
             let mut config = load_config()?;
 
             match property.as_str() {
-                "settings.action" => config.settings.action = value.to_owned(),
+                "settings.action" => {
+                    let value_str = value.trim().to_lowercase();
+                    if value_str != "deny" && value_str != "log" && value_str != "deny_and_log" {
+                        println!(
+                            "WARN: Setting action to {} which is neither 'deny' nor 'log'.",
+                            value_str
+                        );
+                        println!(
+                            "This would result in the action behaving equivalent to 'deny_and_log'."
+                        );
+                    }
+                    config.settings.action = value_str.to_string();
+                }
 
                 "exemptions.uids" => {
                     let uids: Vec<&str> = value.split(',').collect();
@@ -265,7 +277,19 @@ pub fn handle_commands(args: &Args) -> anyhow::Result<()> {
             let mut config = load_config()?;
 
             match property.as_str() {
-                "settings.action" => config.settings.action = value.to_owned(),
+                "settings.action" => {
+                    let value_str = value.trim().to_lowercase();
+                    if value_str != "deny" && value_str != "log" && value_str != "deny_and_log" {
+                        println!(
+                            "WARN: Setting action to {} which is neither 'deny' nor 'log'.",
+                            value_str
+                        );
+                        println!(
+                            "This would result in the action behaving equivalent to 'deny_and_log'."
+                        );
+                    }
+                    config.settings.action = value_str.to_string();
+                }
 
                 "exemptions.uids" => {
                     let uids: Vec<&str> = value.split(',').collect();

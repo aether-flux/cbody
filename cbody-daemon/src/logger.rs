@@ -1,6 +1,7 @@
 use std::{
     fs::{File, OpenOptions},
     io::Write,
+    path::PathBuf,
     sync::Mutex,
 };
 
@@ -9,52 +10,37 @@ use log::{Log, Metadata, Record};
 
 // #[derive(Clone, Debug)]
 pub struct FileLogger {
-    file: Mutex<File>,
+    log_path: PathBuf,
 }
 
 impl FileLogger {
     pub fn new(path: &str) -> Self {
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(path)
-            .expect("Failed to open log file");
+        let path = PathBuf::from(path);
+        Self::ensure_file(&path);
 
-        Self {
-            file: Mutex::new(file),
+        Self { log_path: path }
+    }
+
+    fn ensure_file(path: &PathBuf) {
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
         }
     }
 
     pub fn write_line(&self, line: &str) {
-        if let Ok(mut file) = self.file.lock() {
-            let _ = writeln!(file, "{line}");
-        } else {
-            let mut file = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open("/etc/cbody/cbody.log")
-                .expect("Failed to open log file");
-            let _ = writeln!(file, "{line}");
-        }
-    }
-}
+        let mut file = match OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&self.log_path)
+        {
+            Ok(f) => f,
+            Err(e) => {
+                println!("Failed to open/recreate log file: {}", e);
+                return;
+            }
+        };
 
-impl Log for FileLogger {
-    fn enabled(&self, metadata: &Metadata) -> bool {
-        true
-    }
-
-    fn log(&self, record: &Record) {
-        if self.enabled(record.metadata()) {
-            let mut file = self.file.lock().unwrap();
-            let _ = writeln!(file, "[{}] {}", record.level(), record.args());
-        }
-    }
-
-    fn flush(&self) {
-        if let Ok(mut file) = self.file.lock() {
-            let _ = file.flush();
-        }
+        let _ = writeln!(file, "{line}");
     }
 }
 

@@ -64,7 +64,6 @@ async fn main() -> anyhow::Result<()> {
     let log_ring = aya::maps::RingBuf::try_from(ebpf.take_map("EVENTS").unwrap())?;
     let mut fd =
         unsafe { AsyncFd::register_with_interest(log_ring, tokio::io::Interest::READABLE)? };
-    // let logger = file_logger.clone();
 
     tokio::spawn(async move {
         loop {
