@@ -17,8 +17,8 @@ uids = [0]
 
 # Default rules that apply for every user (UID)
 [default]
-# (optional) deny_exec contains a list of files that are restricted from being executed
-deny_exec = [
+# (optional) exec contains a list of files that are restricted from being executed
+exec = [
     "/usr/bin/ssh",
     "/usr/bin/curl"
 ]
@@ -30,21 +30,21 @@ readonly = [
 noaccess = [
     "/tmp/cbody_test_noaccess.txt",
 ]
-# (optional) block_outbound_ports contains a list of restricted ports
-block_outbound_ports = [4444, 6666, 1337]
+# (optional) outbound_ports contains a list of restricted ports
+outbound_ports = [4444, 6666, 1337]
 
 # Profile with name 'standard-users', applicable to UIDs 1000 and 1001
 [profiles.standard-users]
 # (required) uids contains the list of targeted UIDs
 uids = [1000, 1001]
-deny_exec = [
+exec = [
     "/usr/bin/pipes.sh",
 ]
 
 # Profile with name 'standard-users', applicable to UIDs 33 and 48
 [profiles.service-accounts]
 uids = [33, 48]
-deny_exec = [
+exec = [
     "/usr/sbin/nginx"
 ]
 ```
@@ -76,7 +76,7 @@ This field determines what `cbody` does when a restricted action takes place. It
 
 ## `[default]`
 
-### `deny_exec` (Array[String], optional)
+### `exec` (Array[String], optional)
 
 - This field is an array of strings, where each string is a path to an executable file.
 - Files specified in this array are not allowed (restricted) to be executed.
@@ -94,7 +94,7 @@ This field determines what `cbody` does when a restricted action takes place. It
 - Files specified in this array are allowed to be neither read/accessed nor written/modified.
 - For example, files which may contain vulnerable data.
 
-### `block_outbound_ports` (Array[unsigned integer], optional)
+### `outbound_ports` (Array[unsigned integer], optional)
 
 - This field is an array of unsigned integers, where each number is a port number.
 - Ports specified in this array are not allowed to be connected to or reached (i.e. used as a destination port).
@@ -108,7 +108,7 @@ This field determines what `cbody` does when a restricted action takes place. It
 - UIDs specified in this array are restricted to perform the actions defined in this profile.
 - For example, add default user (1000) to the profile: `uids = [1000]`.
 
-## `deny_exec` (Array[String], optional)
+## `exec` (Array[String], optional)
 
 - This field is an array of strings, where each string is a path to an executable file.
 - Files specified in this array are not allowed (restricted) to be executed.
@@ -126,7 +126,7 @@ This field determines what `cbody` does when a restricted action takes place. It
 - Files specified in this array are allowed to be neither read/accessed nor written/modified.
 - For example, files which may contain vulnerable data.
 
-### `block_outbound_ports` (Array[unsigned integer], optional)
+### `outbound_ports` (Array[unsigned integer], optional)
 
 - This field is an array of unsigned integers, where each number is a port number.
 - Ports specified in this array are not allowed to be connected to or reached (i.e. used as a destination port).
